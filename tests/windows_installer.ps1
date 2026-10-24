@@ -59,12 +59,16 @@ try {
  }
  'PASS: native Windows PowerShell 5.1 installation, recovery from empty file DACLs, normal reinstall, trusted HTTPS and data preservation.'|Tee-Object -FilePath (Join-Path $OutputDirectory 'result.txt')
 }catch{
+ $testFailure=$_.Exception.Message
  # A short annotation is readable even when Actions log/artifact access needs sign-in.
- try{Invoke-RestMethod 'https://localhost:55443/api/health' -TimeoutSec 3|Out-Null}catch{Write-Host "::error title=Native HTTPS diagnostic::$($_.Exception.Message)"}
+ try{$health=Invoke-RestMethod 'https://127.0.0.1:55443/api/health' -TimeoutSec 5;Write-Host "::error title=Native HTTPS diagnostic::Probe returned status: $($health.status)"}catch{Write-Host "::error title=Native HTTPS diagnostic::$($_.Exception.Message)"}
  $failedService=Get-Service BeastCloud -ErrorAction SilentlyContinue
  if($failedService){Write-Host "::error title=Native service diagnostic::Status: $($failedService.Status)"}
+ $serviceInfo=Get-CimInstance Win32_Service -Filter "Name='BeastCloud'" -ErrorAction SilentlyContinue
+ $listeners=@(Get-NetTCPConnection -State Listen -LocalPort 55443 -ErrorAction SilentlyContinue)
+ Write-Host "::error title=Native listener diagnostic::Service process: $($serviceInfo.ProcessId); listening addresses: $($listeners.LocalAddress -join ',')"
  try{
-  foreach($event in Get-WinEvent -FilterHashtable @{LogName='Application';StartTime=(Get-Date).AddMinutes(-10);Level=@(2,3)} -MaxEvents 20 -ErrorAction SilentlyContinue|Where-Object {$_.Message -match 'BeastCloud'}){
+  foreach($event in Get-WinEvent -FilterHashtable @{LogName='Application';StartTime=(Get-Date).AddMinutes(-10);Level=@(2,3)} -MaxEvents 20 -ErrorAction SilentlyContinue|Where-Object {$_.ProviderName -in @('.NET Runtime','Application Error','BeastCloud.Server') -and $_.Message -match 'BeastCloud'}){
    $message=$event.Message.Substring(0,[Math]::Min(1800,$event.Message.Length)).Replace('%','%25').Replace("`r",'%0D').Replace("`n",'%0A')
    Write-Host "::error title=Native application event::$message"
   }
@@ -87,6 +91,12 @@ try {
    Write-Host "::error title=Native installer diagnostic::$escaped"
   }
  }
+ $failureDetails=@($testFailure)
+ foreach($diagnostic in Get-ChildItem -LiteralPath $OutputDirectory -Filter 'setup-attempt-*.log'){
+  $failureDetails+=@(Get-Content -LiteralPath $diagnostic.FullName -Encoding UTF8|Where-Object {$_ -match 'FAILED during'}|Select-Object -Last 1)
+ }
+ $summary=($failureDetails -join "`n").Replace('%','%25').Replace("`r",'%0D').Replace("`n",'%0A')
+ Write-Host "::error title=Native test failure::$summary"
  throw
 }finally{
  if($ownsService){
