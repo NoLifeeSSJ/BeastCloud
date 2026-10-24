@@ -9,7 +9,7 @@ param(
  [string]$Root='C:\BeastCloud',
  [string]$Storage='',
  [ValidateRange(1024,65535)][int]$Port=5443,
- [ValidatePattern('^(v[0-9]+\.[0-9]+\.[0-9]+|[a-f0-9]{40})$')][string]$SourceRef='v0.1.0',
+ [ValidatePattern('^(v[0-9]+\.[0-9]+\.[0-9]+|[a-f0-9]{40})$')][string]$SourceRef='v0.1.1',
  [string]$CacheDirectory='',
  [switch]$DownloadOnly
 )
@@ -141,12 +141,30 @@ try {
  # Validate every executable/script against checksums from the verified archive before any package code runs.
  $checked=Test-ExtractedPackage $archive $package
  Write-Host "Verified BeastCloud $($checked.version) package: $package"
- if($DownloadOnly){Write-Host 'Download and extraction complete. No service, account, certificate or installation was changed.';return}
  $installer=Join-Path $package 'scripts/Install.ps1'
+ $packageArgument=''
+ if($manifest.installerPatch){
+  $patch=$manifest.installerPatch
+  if($patch.version -ne '0.1.1' -or @($patch.files).Count -ne 4){throw 'Unsupported installer patch metadata.'}
+  $patchRoot=Join-Path $cache ('installer-'+$patch.version)
+  Assert-SafeDownloadPath $patchRoot
+  New-Item -ItemType Directory -Path $patchRoot -Force|Out-Null
+  $seen=@{}
+  foreach($file in @($patch.files)){
+   if($file.name -cnotin @('Install.ps1','InstallerSupport.ps1','Get-BeastCloud.ps1','GITHUB-INSTALL.md') -or $seen.ContainsKey($file.name) -or $file.sha256 -notmatch '^[a-f0-9]{64}$' -or [long]$file.bytes -lt 1 -or [long]$file.bytes -gt 512KB){throw 'Invalid installer patch file.'}
+   $seen[$file.name]=$true
+   Get-VerifiedFile "$base/installer/$($file.name)" (Join-Path $patchRoot $file.name) ([long]$file.bytes) $file.sha256
+  }
+  $installer=Join-Path $patchRoot 'Install.ps1'
+  $packageArgument=' -PackagePath "'+$package+'"'
+  Write-Host 'Verified installer revision 0.1.1. Reusing the existing application package.'
+ }
+ if($DownloadOnly){Write-Host 'Download and extraction complete. No service, account, certificate or installation was changed.';return}
  $arguments='-NoProfile -ExecutionPolicy Bypass -File "'+$installer+'" -Root "'+$Root+'" -Port '+$Port
+ $arguments+=$packageArgument
  if($Storage){$arguments+=' -Storage "'+$Storage+'"'}
  Write-Host 'Starting the local Windows installer. A UAC prompt may appear.'
- $process=Start-Process -FilePath "$env:SystemRoot\System32\WindowsPowerShell\v1.0\powershell.exe" -ArgumentList $arguments -Wait -PassThru
- if($process.ExitCode -ne 0){throw "Windows installer failed (exit $($process.ExitCode)). The verified package remains at $package. Check the installation log."}
+ $process=Start-Process -FilePath "$env:SystemRoot\System32\WindowsPowerShell\v1.0\powershell.exe" -ArgumentList $arguments -NoNewWindow -Wait -PassThru
+ if($process.ExitCode -ne 0){throw "Windows installer failed (exit $($process.ExitCode)). The verified package remains at $package. The detailed error and temporary setup-log path are printed above."}
  Write-Host "Installation succeeded. Open https://localhost:$Port"
 }catch{Write-Error -ErrorAction Continue $_.Exception.Message;exit 1}

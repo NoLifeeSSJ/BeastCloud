@@ -26,5 +26,30 @@
       "bytes": 14462064,
       "sha256": "a696f0231f9df49ca4d8d92a60d6c53dafd840944b3673ed4f69dc7ec15cc150"
     }
-  ]
+  ],
+  "installerPatch": {
+    "version": "0.1.1",
+    "files": [
+      {
+        "name": "Install.ps1",
+        "bytes": 15201,
+        "sha256": "fb9099be8543d13ce0a03665b77e10a76711450d338fcb811468e7ba1a06383e"
+      },
+      {
+        "name": "InstallerSupport.ps1",
+        "bytes": 1447,
+        "sha256": "ef87540f52e1cc3e9ea16fdc7f641024b8f0cf26476bcda976d6293289db90ef"
+      },
+      {
+        "name": "Get-BeastCloud.ps1",
+        "bytes": 11511,
+        "sha256": "5fb3e966a0eee22e9cf5ee74df87e27124b4dd12c6370bc0ee75b573a96d15c1"
+      },
+      {
+        "name": "GITHUB-INSTALL.md",
+        "bytes": 6689,
+        "sha256": "f5c073ff444980ba37880d988a4d9fda7c338699d6718bc20b6f240526111eed"
+      }
+    ]
+  }
 }

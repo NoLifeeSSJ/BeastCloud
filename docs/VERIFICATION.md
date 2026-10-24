@@ -41,3 +41,7 @@ Use a disposable Windows 11 x64 VM or owned test machine with snapshots; never d
 10. Uninstall; verify service removal and preserved configuration, database, originals and backups. Remove only the installation-specific certificate trust entry and optional sync task deliberately. Do not delete user data as part of uninstall.
 
 Fresh-machine/reboot/second-device/private-LAN/physical-drive failure and Windows update/repair/uninstall results must remain **unverified** until these procedures are executed on Windows. The original full specification also contains the explicitly listed scope gaps in FEATURES.md; passing this portable suite does not close those gaps.
+
+## Installer revision 0.1.1 regressions
+
+`PWSH=/path/to/pwsh python3 tests/installer_support.py` passes 5 portable helper tests; `PWSH=/path/to/pwsh python3 tests/github_installer.py` passes 10 downloader tests. These reproduce and fix the certificate-extension string/array bug, prove early failures create diagnostics before a root installation exists, verify known-secret redaction and symlink refusal, and verify checksum-protected installer metadata without executing patch code in DownloadOnly mode. These are SHA-256 integrity checks, not a digital signature. The application ZIP and its four parts are unchanged; no backend behavior was altered. Native Windows installer execution remains a separate check.
