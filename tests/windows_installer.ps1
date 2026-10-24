@@ -43,6 +43,15 @@ try {
   }
  }
  'PASS: native Windows PowerShell 5.1 installation, protected-file replacement, service identity, trusted HTTPS and data preservation.'|Tee-Object -FilePath (Join-Path $OutputDirectory 'result.txt')
+}catch{
+ # A short annotation is readable even when Actions log/artifact access needs sign-in.
+ foreach($diagnostic in Get-ChildItem -LiteralPath $OutputDirectory -Filter 'setup-attempt-*.log'){
+  foreach($line in Get-Content -LiteralPath $diagnostic.FullName -Encoding UTF8|Select-Object -Last 6){
+   $escaped=$line.Replace('%','%25').Replace("`r",'%0D').Replace("`n",'%0A')
+   Write-Host "::error title=Native installer diagnostic::$escaped"
+  }
+ }
+ throw
 }finally{
  if($ownsService){
   Stop-Service BeastCloud -ErrorAction SilentlyContinue
