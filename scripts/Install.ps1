@@ -61,19 +61,22 @@ try {
  if($listeners.Count -gt 0){if(!$oldService){throw 'Selected port is already in use.'};$serviceInfo=Get-CimInstance Win32_Service -Filter "Name='BeastCloud'";if(@($listeners|Where-Object {$_.OwningProcess -ne $serviceInfo.ProcessId}).Count -gt 0){throw 'Selected port is in use by another process.'}}
  foreach($diskPath in @($Root,$Storage)){ $volume=[IO.DriveInfo]::new([IO.Path]::GetPathRoot($diskPath));if($volume.DriveType -eq [IO.DriveType]::Network -or $volume.DriveFormat -notin @('NTFS','ReFS')){throw 'Application and managed storage require a local NTFS/ReFS volume; mapped network drives are not supported.'};$drive=Get-PSDrive -Name ([IO.Path]::GetPathRoot($diskPath).Substring(0,1));if($drive.Free -lt 2GB){throw 'At least 2 GiB free space is required on each target volume.'}}
  if(!$existing -and (Test-Path $Storage) -and (Get-ChildItem -Force $Storage|Measure-Object).Count -gt 0){throw 'First-install managed storage must be empty; existing files were preserved.'}
+ $stage='Stopping the previous Windows service'
+ if($oldService){
+  $previous=(Get-CimInstance Win32_Service -Filter "Name='BeastCloud'").PathName
+  Write-BeastSetupLog -Path $SetupLogPath -Message $stage
+  Stop-Service BeastCloud
+  (Get-Service BeastCloud).WaitForStatus('Stopped',[TimeSpan]::FromSeconds(60))
+ }
  $stage='Creating installation directories and protecting permissions'
  Write-BeastSetupLog -Path $SetupLogPath -Message $stage
  foreach($dir in @('app','config','data\db','data\versions','data\trash','data\thumbnails','data\search','data\temp','logs','backups','releases','scripts','docs')){Assert-NoReparse (Join-Path $Root $dir);New-Item -ItemType Directory -Force (Join-Path $Root $dir)|Out-Null}
- $previous=$null
  Grant-BeastTreeAccess -Path $Root -Identities @('*S-1-5-18','*S-1-5-32-544') -Rights F -Protect
  if(!$existing){@{executable='';version=$manifest.version;storage=$Storage;port=$Port;lan=[bool]$Lan;lanAddress=$LanAddress;thumbprint='';state='provisioning'}|ConvertTo-Json|Set-Content (Join-Path $Root 'config\installation.json') -Encoding UTF8}
  $log=Join-Path $Root ('logs\install-'+(Get-Date -Format yyyyMMdd-HHmmss)+'.log')
  'Beginning local package installation'|Out-File $log -Encoding UTF8
  Write-BeastSetupLog -Path $SetupLogPath -Message "Local installation log: $log"
- $stage='Stopping the previous service and creating a recovery checkpoint'
- if($oldService){Stop-Service BeastCloud; (Get-Service BeastCloud).WaitForStatus('Stopped',[TimeSpan]::FromSeconds(60))}
- $previous=$null
- if($oldService){$previous=(Get-CimInstance Win32_Service -Filter "Name='BeastCloud'").PathName}
+ $stage='Creating a recovery checkpoint'
  $env:BEAST_ROOT=$Root
  if($existing -and (Test-Path (Join-Path $Root 'data\db\beast.db'))){$exe=(Get-Content (Join-Path $Root 'config\installation.json') -Raw|ConvertFrom-Json).executable;& $exe --backup;if($LASTEXITCODE -ne 0){throw 'Pre-update backup failed. Installation stopped.'}}
  $stage='Copying the application and installer scripts'
