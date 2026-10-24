@@ -72,7 +72,28 @@ try {
  if($failedService){Write-Host "::error title=Native service diagnostic::Status: $($failedService.Status)"}
  $serviceInfo=Get-CimInstance Win32_Service -Filter "Name='BeastCloud'" -ErrorAction SilentlyContinue
  $listeners=@(Get-NetTCPConnection -State Listen -LocalPort 55443 -ErrorAction SilentlyContinue)
- Write-Host "::error title=Native listener diagnostic::Service process: $($serviceInfo.ProcessId); listening addresses: $($listeners.LocalAddress -join ',')"
+ Write-Host "::error title=Native listener diagnostic::Service process: $($serviceInfo.ProcessId); exit: $($serviceInfo.ExitCode); service exit: $($serviceInfo.ServiceSpecificExitCode); identity: $($serviceInfo.StartName); command: $($serviceInfo.PathName); listening addresses: $($listeners.LocalAddress -join ',')"
+ $presence=@()
+ foreach($relative in @('config\setup.key','config\instance.lock','data\db\beast.db')){$presence+=($relative+'='+(Test-Path -LiteralPath (Join-Path $root $relative)))}
+ Write-Host ('::error title=Native startup files::'+($presence -join '; '))
+ try{
+  $event=Get-WinEvent -FilterHashtable @{LogName='System';ProviderName='Service Control Manager';StartTime=(Get-Date).AddMinutes(-10);Level=@(2,3)} -MaxEvents 20 -ErrorAction SilentlyContinue|Where-Object {$_.Message -match 'BeastCloud'}|Select-Object -First 1
+  if($event){Write-Host ('::error title=Native SCM diagnostic::'+$event.Message.Replace('%','%25').Replace("`r",'%0D').Replace("`n",'%0A'))}
+ }catch{}
+ if($failedService.Status -eq 'Stopped'){
+  try{
+   $installation=Get-Content -LiteralPath (Join-Path $root 'config\installation.json') -Raw|ConvertFrom-Json
+   $env:BEAST_ROOT=$root
+   $info=[Diagnostics.ProcessStartInfo]::new($installation.executable,'--backup')
+   $info.UseShellExecute=$false;$info.RedirectStandardError=$true;$info.RedirectStandardOutput=$true;$info.CreateNoWindow=$true
+   $process=[Diagnostics.Process]::Start($info)
+   if(!$process.WaitForExit(10000)){$process.Kill();throw 'The console diagnostic exceeded 10 seconds.'}
+   $stderr=$process.StandardError.ReadToEnd();$stdout=$process.StandardOutput.ReadToEnd()
+   $message=("Exit $($process.ExitCode): "+$stderr+$stdout)
+   $message=$message.Substring(0,[Math]::Min(1800,$message.Length)).Replace('%','%25').Replace("`r",'%0D').Replace("`n",'%0A')
+   Write-Host "::error title=Native console startup::$message"
+  }catch{Write-Host "::error title=Native console startup::$($_.Exception.Message)"}
+ }
  try{
   foreach($event in Get-WinEvent -FilterHashtable @{LogName='Application';ProviderName=@('.NET Runtime','Application Error');StartTime=(Get-Date).AddMinutes(-10);Level=@(2,3)} -MaxEvents 5 -ErrorAction SilentlyContinue|Where-Object {$_.Message -match 'BeastCloud'}){
    $message=$event.Message.Substring(0,[Math]::Min(1800,$event.Message.Length)).Replace('%','%25').Replace("`r",'%0D').Replace("`n",'%0A')
