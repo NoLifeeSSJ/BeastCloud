@@ -61,6 +61,12 @@ try {
 }catch{
  $testFailure=$_.Exception.Message
  # A short annotation is readable even when Actions log/artifact access needs sign-in.
+ $failureDetails=@($testFailure)
+ foreach($diagnostic in Get-ChildItem -LiteralPath $OutputDirectory -Filter 'setup-attempt-*.log'){
+  $failureDetails+=@(Get-Content -LiteralPath $diagnostic.FullName -Encoding UTF8|Where-Object {$_ -match 'FAILED during'}|Select-Object -Last 1)
+ }
+ $summary=($failureDetails -join "`n").Replace('%','%25').Replace("`r",'%0D').Replace("`n",'%0A')
+ Write-Host "::error title=Native test failure::$summary"
  try{$health=Invoke-RestMethod 'https://127.0.0.1:55443/api/health' -TimeoutSec 5;Write-Host "::error title=Native HTTPS diagnostic::Probe returned status: $($health.status)"}catch{Write-Host "::error title=Native HTTPS diagnostic::$($_.Exception.Message)"}
  $failedService=Get-Service BeastCloud -ErrorAction SilentlyContinue
  if($failedService){Write-Host "::error title=Native service diagnostic::Status: $($failedService.Status)"}
@@ -86,17 +92,10 @@ try {
   }catch{Write-Host "::error title=Fixture file permissions::$path : $($_.Exception.Message)"}
  }
  foreach($diagnostic in Get-ChildItem -LiteralPath $OutputDirectory -Filter 'setup-attempt-*.log'){
-  foreach($line in Get-Content -LiteralPath $diagnostic.FullName -Encoding UTF8|Select-Object -Last 6){
-   $escaped=$line.Replace('%','%25').Replace("`r",'%0D').Replace("`n",'%0A')
-   Write-Host "::error title=Native installer diagnostic::$escaped"
-  }
+  $lines=@(Get-Content -LiteralPath $diagnostic.FullName -Encoding UTF8|Select-Object -Last 6)
+  $escaped=($lines -join "`n").Replace('%','%25').Replace("`r",'%0D').Replace("`n",'%0A')
+  Write-Host "::error title=Native installer diagnostic::$escaped"
  }
- $failureDetails=@($testFailure)
- foreach($diagnostic in Get-ChildItem -LiteralPath $OutputDirectory -Filter 'setup-attempt-*.log'){
-  $failureDetails+=@(Get-Content -LiteralPath $diagnostic.FullName -Encoding UTF8|Where-Object {$_ -match 'FAILED during'}|Select-Object -Last 1)
- }
- $summary=($failureDetails -join "`n").Replace('%','%25').Replace("`r",'%0D').Replace("`n",'%0A')
- Write-Host "::error title=Native test failure::$summary"
  throw
 }finally{
  if($ownsService){
