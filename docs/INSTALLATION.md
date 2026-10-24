@@ -4,6 +4,8 @@ Supported package target: Windows 11 x64 and Server 2022+ x64, native Windows Po
 
 Extract the local package outside C:\BeastCloud. Run the one command in README from that extracted folder. It refuses unrelated nonempty roots and managed-storage directories. It never scans entire disks. UAC restarts only the installer with correctly quoted arguments. Installation records a marker before provisioning so failed attempts can be diagnosed/retried without deleting data. The installer logs operational outcomes, not setup secrets or PFX passwords. Read the local setup key from the protected config folder; the key is deleted after owner creation.
 
+For step-by-step account creation, the Keynote file-association issue and a current-user desktop shortcut, see [GETTING-STARTED.md](GETTING-STARTED.md). `setup.key` is plain text and requires an administrator window to read; no file-association change is needed.
+
 ## Windows-managed resources
 
 * Service `BeastCloud`, automatic startup, virtual account `NT SERVICE\BeastCloud`, service SID and restart-after-crash policy.

@@ -2,11 +2,13 @@
 
 Your files, memories, and everyday plans, on hardware you own. BeastCloud is a local ASP.NET Core 10 / React / SQLite personal cloud with a native Windows service and optional selected-folder Windows sync companion. No hosted database, login provider, relay, analytics, CDN assets, API key, subscription, Docker, WSL, IIS, or Node runtime is required by the installed application.
 
-**Release 0.1.0 is a working initial implementation, not a claim of production certification or complete acceptance on Windows.** The portable server and browser workflows have been exercised on Linux. Windows service installation, reboot recovery, certificate-store changes, Windows PowerShell 5.1 execution, and actual Windows-to-Windows DPAPI pairing still require the Windows acceptance procedure. Read [the feature matrix](docs/FEATURES.md) and [verification report](docs/VERIFICATION.md) before trusting it with your only copy of important data.
+**Release 0.1.0 is a working initial implementation, not a claim of production certification or complete acceptance on Windows.** The portable server and browser workflows have been exercised on Linux. Installer/runtime repair 0.1.2 passed fresh installation, permission recovery and reinstall on Windows Server 2022 with Windows PowerShell 5.1 and trusted HTTPS. Windows 11, reboot recovery and actual Windows-to-Windows DPAPI pairing still require the broader acceptance procedure. Read [the feature matrix](docs/FEATURES.md) and [verification report](docs/VERIFICATION.md) before trusting it with your only copy of important data.
 
 ## Install directly from GitHub (no manual download or extraction)
 
 Use the single Windows PowerShell command in [the GitHub installation guide](docs/GITHUB-INSTALL.md). It automatically downloads, verifies, combines and extracts the versioned Windows package, then runs the local installer. A UAC prompt is expected. No development tools or GitHub login are needed for this public download. Installer revision **0.1.2** repairs file permissions left by earlier failed attempts, includes the certificate fix and visible diagnostics, and reuses the original verified application package.
+
+After installation, follow [the first-run guide](docs/GETTING-STARTED.md) to copy the plain-text setup key, create your account and add a desktop icon. Windows may associate `.key` with Keynote; use administrator PowerShell to read the protected key. The main interface runs in your browser, with an automatically started Windows service in the background.
 
 ## Install from the delivered offline package
 
