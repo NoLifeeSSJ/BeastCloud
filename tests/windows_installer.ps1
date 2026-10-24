@@ -71,6 +71,9 @@ try {
  foreach($diagnostic in Get-ChildItem -LiteralPath $OutputDirectory -Filter 'setup-attempt-*.log'){
   $failureDetails+=@(Get-Content -LiteralPath $diagnostic.FullName -Encoding UTF8|Where-Object {$_ -match 'FAILED during'}|Select-Object -Last 1)
  }
+ foreach($relative in @('config\instance.lock','config\installation.json')){
+  try{$path=Join-Path $root $relative;$item=Get-Item -LiteralPath $path -Force;$acl=Get-Acl -LiteralPath $path;$failureDetails+=($relative+' attributes='+$item.Attributes+' ACL='+$acl.Sddl)}catch{$failureDetails+=($relative+': '+$_.Exception.Message)}
+ }
  $summary=($failureDetails -join "`n").Replace('%','%25').Replace("`r",'%0D').Replace("`n",'%0A')
  Write-Host "::error title=Native test failure::$summary"
  try{$health=Invoke-RestMethod 'https://127.0.0.1:55443/api/health' -TimeoutSec 5;Write-Host "::error title=Native HTTPS diagnostic::Probe returned status: $($health.status)"}catch{Write-Host "::error title=Native HTTPS diagnostic::$($_.Exception.Message)"}
