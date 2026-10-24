@@ -44,9 +44,15 @@ try {
    # Reproduce the exact 0.1.1 failure: this command strips inherited file
    # permissions, but its directory-only grants do not apply to existing files.
    Stop-Service BeastCloud
-   # Failed 0.1.1 provisioning had not yet granted the service access to its marker.
-   & icacls.exe (Join-Path $root 'config\installation.json') /remove:g 'NT SERVICE\BeastCloud'|Out-Null
-   if($LASTEXITCODE -ne 0){throw 'Unable to prepare the provisioning marker regression fixture.'}
+   # The repaired install has explicit grants; original provisioning had only
+   # inherited file grants. Model the resulting protected empty DACL on the
+   # blocked script and marker, retaining their original administrator owner.
+   foreach($relative in @('scripts\Build.ps1','config\installation.json')){
+    $path=Join-Path $root $relative
+    $emptyAcl=Get-Acl -LiteralPath $path
+    $emptyAcl.SetSecurityDescriptorSddlForm('D:P',[Security.AccessControl.AccessControlSections]::Access)
+    Set-Acl -LiteralPath $path -AclObject $emptyAcl
+   }
    & icacls.exe $root /inheritance:r /grant:r '*S-1-5-18:(OI)(CI)F' '*S-1-5-32-544:(OI)(CI)F' /T /C|Out-Null
    if($LASTEXITCODE -ne 0){throw 'Unable to prepare the damaged-permissions regression fixture.'}
    $damaged=Get-Acl -LiteralPath (Join-Path $root 'scripts\Build.ps1')
