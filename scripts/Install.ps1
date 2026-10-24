@@ -138,8 +138,9 @@ try {
  $address='localhost'
  $url="https://${address}:$Port"
  $ready=$false
- for($i=0;$i -lt 30;$i++){try{$response=Invoke-RestMethod "$url/api/health" -TimeoutSec 2;if($response.status -eq 'ready'){$ready=$true;break}}catch{};Start-Sleep -Seconds 1}
- if(!$ready){throw 'Service did not pass HTTPS readiness. Check Windows Event Viewer, certificate trust and the installation log.'}
+ $readinessFailure='No ready response received.'
+ for($i=0;$i -lt 30;$i++){try{$response=Invoke-RestMethod "$url/api/health" -TimeoutSec 2;if($response.status -eq 'ready'){$ready=$true;break};$readinessFailure='Unexpected health response status: '+[string]$response.status}catch{$readinessFailure=$_.Exception.Message};Start-Sleep -Seconds 1}
+ if(!$ready){throw "Service did not pass trusted HTTPS readiness: $readinessFailure Check Windows Event Viewer and the installation log."}
  @{executable=$exe;version=$manifest.version;installerRevision='0.1.2';storage=$Storage;port=$Port;lan=[bool]$Lan;lanAddress=$LanAddress;thumbprint=$thumbprint}|ConvertTo-Json|Set-Content (Join-Path $Root 'config\installation.json') -Encoding UTF8
  'Installation passed HTTPS readiness.'|Out-File $log -Encoding UTF8 -Append
  Write-BeastSetupLog -Path $SetupLogPath -Message 'SUCCESS: installation passed trusted HTTPS readiness'

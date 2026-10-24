@@ -59,6 +59,14 @@ try {
  'PASS: native Windows PowerShell 5.1 installation, recovery from empty file DACLs, normal reinstall, trusted HTTPS and data preservation.'|Tee-Object -FilePath (Join-Path $OutputDirectory 'result.txt')
 }catch{
  # A short annotation is readable even when Actions log/artifact access needs sign-in.
+ try{Invoke-RestMethod 'https://localhost:55443/api/health' -TimeoutSec 3|Out-Null}catch{Write-Host "::error title=Native HTTPS diagnostic::$($_.Exception.Message)"}
+ $failedService=Get-Service BeastCloud -ErrorAction SilentlyContinue
+ if($failedService){Write-Host "::error title=Native service diagnostic::Status: $($failedService.Status)"}
+ if(Test-Path -LiteralPath (Join-Path $root 'logs')){
+  foreach($runtimeLog in Get-ChildItem -LiteralPath (Join-Path $root 'logs') -File|Where-Object {$_.Name -notlike 'install-*'}){
+   foreach($line in Get-Content -LiteralPath $runtimeLog.FullName -Tail 8){Write-Host ('::error title=Native runtime diagnostic::'+$line.Replace('%','%25').Replace("`r",'%0D').Replace("`n",'%0A'))}
+  }
+ }
  foreach($path in @((Join-Path $root 'scripts'),(Join-Path $root 'scripts\Build.ps1'))){
   try{
    $item=Get-Item -LiteralPath $path -Force
