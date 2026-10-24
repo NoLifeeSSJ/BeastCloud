@@ -27,7 +27,7 @@ try {
  [IO.Compression.ZipFile]::ExtractToDirectory($archive,$package)
  $installer=Join-Path $repository 'scripts\Install.ps1'
  $ownsService=$true
- foreach($attempt in 1..2){
+ foreach($attempt in 1..3){
   $diagnostic=Join-Path $OutputDirectory ("setup-attempt-$attempt.log")
   # The server's browser launch is best effort on headless runners.
   & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $installer -Root $root -PackagePath $package -Port 55443 -SetupLogPath $diagnostic
@@ -38,11 +38,18 @@ try {
   if((Invoke-RestMethod 'https://localhost:55443/api/health').status -ne 'ready'){throw 'Trusted HTTPS did not become ready.'}
   if($attempt -eq 1){
    'preserved fixture'|Set-Content -LiteralPath (Join-Path $root 'data\installer-sentinel.txt')
+   # Reproduce the exact 0.1.1 failure: this command strips inherited file
+   # permissions, but its directory-only grants do not apply to existing files.
+   Stop-Service BeastCloud
+   & icacls.exe $root /inheritance:r /grant:r '*S-1-5-18:(OI)(CI)F' '*S-1-5-32-544:(OI)(CI)F' /T /C|Out-Null
+   if($LASTEXITCODE -ne 0){throw 'Unable to prepare the damaged-permissions regression fixture.'}
+   $damaged=Get-Acl -LiteralPath (Join-Path $root 'scripts\Build.ps1')
+   if(@($damaged.Access).Count -ne 0){throw 'The old permissions command did not reproduce an empty file DACL.'}
   }elseif((Get-Content -LiteralPath (Join-Path $root 'data\installer-sentinel.txt') -Raw).Trim() -ne 'preserved fixture'){
    throw 'An installer retry changed the data sentinel.'
   }
  }
- 'PASS: native Windows PowerShell 5.1 installation, protected-file replacement, service identity, trusted HTTPS and data preservation.'|Tee-Object -FilePath (Join-Path $OutputDirectory 'result.txt')
+ 'PASS: native Windows PowerShell 5.1 installation, recovery from empty file DACLs, normal reinstall, trusted HTTPS and data preservation.'|Tee-Object -FilePath (Join-Path $OutputDirectory 'result.txt')
 }catch{
  # A short annotation is readable even when Actions log/artifact access needs sign-in.
  foreach($path in @((Join-Path $root 'scripts'),(Join-Path $root 'scripts\Build.ps1'))){

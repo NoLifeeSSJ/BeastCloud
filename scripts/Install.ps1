@@ -11,7 +11,7 @@ $password=$null
 if(!$SetupLogPath){$SetupLogPath=Join-Path ([IO.Path]::GetTempPath()) ('BeastCloud-setup-'+[guid]::NewGuid().ToString('N')+'.log')}
 try {
  . (Join-Path $PSScriptRoot 'InstallerSupport.ps1')
- Write-BeastSetupLog -Path $SetupLogPath -Message 'Starting BeastCloud Windows installer revision 0.1.1'
+ Write-BeastSetupLog -Path $SetupLogPath -Message 'Starting BeastCloud Windows installer revision 0.1.2'
  Write-Host "Setup diagnostics: $SetupLogPath"
  $stage='Checking Windows and arguments'
  if ($env:OS -ne 'Windows_NT') { throw 'BeastCloud installation requires Windows.' }
@@ -45,7 +45,7 @@ try {
  $manifest=Test-BeastPackage $package
  Write-BeastSetupLog -Path $SetupLogPath -Message 'Application package checksums passed'
  $stage='Checking target paths, service, port, and disk space'
- if(Test-Path $Root){Assert-NoReparse $Root; if(!(Test-Path (Join-Path $Root 'config\installation.json')) -and (Get-ChildItem -Force $Root|Measure-Object).Count -gt 0){throw 'Target is not a marked BeastCloud installation. Existing files were preserved. Choose an empty root.'}}
+ if(Test-Path $Root){Assert-NoReparse $Root;Assert-NoReparse (Join-Path $Root 'config');Repair-BeastInstallationMarkerAccess -Path (Join-Path $Root 'config\installation.json') -SetupLogPath $SetupLogPath; if(!(Test-Path (Join-Path $Root 'config\installation.json')) -and (Get-ChildItem -Force $Root|Measure-Object).Count -gt 0){throw 'Target is not a marked BeastCloud installation. Existing files were preserved. Choose an empty root.'}}
  Assert-NoReparse $Storage
  $oldService=Get-Service BeastCloud -ErrorAction SilentlyContinue
  $wasRunning=$oldService -and $oldService.Status -eq 'Running'
@@ -62,8 +62,7 @@ try {
  Write-BeastSetupLog -Path $SetupLogPath -Message $stage
  foreach($dir in @('app','config','data\db','data\versions','data\trash','data\thumbnails','data\search','data\temp','logs','backups','releases','scripts','docs')){Assert-NoReparse (Join-Path $Root $dir);New-Item -ItemType Directory -Force (Join-Path $Root $dir)|Out-Null}
  $previous=$null
- & icacls.exe $Root /inheritance:r /grant:r '*S-1-5-18:(OI)(CI)F' '*S-1-5-32-544:(OI)(CI)F' /T /C|Out-Null
- if($LASTEXITCODE -ne 0){throw 'Failed to protect the installation directory before writing secrets.'}
+ Grant-BeastTreeAccess -Path $Root -Identities @('*S-1-5-18','*S-1-5-32-544') -Rights F -Protect
  if(!$existing){@{executable='';version=$manifest.version;storage=$Storage;port=$Port;lan=[bool]$Lan;lanAddress=$LanAddress;thumbprint='';state='provisioning'}|ConvertTo-Json|Set-Content (Join-Path $Root 'config\installation.json') -Encoding UTF8}
  $log=Join-Path $Root ('logs\install-'+(Get-Date -Format yyyyMMdd-HHmmss)+'.log')
  'Beginning local package installation'|Out-File $log -Encoding UTF8
@@ -109,10 +108,9 @@ try {
  $stage='Configuring the Windows service identity and permissions'
  Write-BeastSetupLog -Path $SetupLogPath -Message $stage
  # Administrators and SYSTEM own code/config; the service SID gets only the required write locations.
- & icacls.exe $Root /inheritance:r /grant:r '*S-1-5-18:(OI)(CI)F' '*S-1-5-32-544:(OI)(CI)F' /T /C|Out-File $log -Encoding UTF8 -Append
- if($LASTEXITCODE -ne 0){throw 'Failed to protect installation ACLs.'}
+ Grant-BeastTreeAccess -Path $Root -Identities @('*S-1-5-18','*S-1-5-32-544') -Rights F -Protect -LogPath $log
  $exe=Join-Path $target 'BeastCloud.Server.exe'
- if(!$existing){@{executable=$exe;version=$manifest.version;installerRevision='0.1.1';storage=$Storage;port=$Port;lan=[bool]$Lan;lanAddress=$LanAddress;thumbprint=$thumbprint;state='provisioning'}|ConvertTo-Json|Set-Content (Join-Path $Root 'config\installation.json') -Encoding UTF8}
+ if(!$existing){@{executable=$exe;version=$manifest.version;installerRevision='0.1.2';storage=$Storage;port=$Port;lan=[bool]$Lan;lanAddress=$LanAddress;thumbprint=$thumbprint;state='provisioning'}|ConvertTo-Json|Set-Content (Join-Path $Root 'config\installation.json') -Encoding UTF8}
  $binary='"'+$exe+'" --contentRoot "'+$target+'"'
  if(!$oldService){New-Service -Name BeastCloud -DisplayName 'BeastCloud private cloud' -BinaryPathName $binary -StartupType Automatic|Out-Null}
  $service=Get-CimInstance Win32_Service -Filter "Name='BeastCloud'"
@@ -121,10 +119,9 @@ try {
  & sc.exe sidtype BeastCloud unrestricted|Out-File $log -Encoding UTF8 -Append
  & sc.exe failure BeastCloud reset= 86400 actions= restart/5000/restart/15000/restart/60000|Out-File $log -Encoding UTF8 -Append
  & icacls.exe $Root /grant 'NT SERVICE\BeastCloud:RX'|Out-File $log -Encoding UTF8 -Append
- foreach($path in @($target,(Join-Path $Root 'config'))){& icacls.exe $path /grant 'NT SERVICE\BeastCloud:(OI)(CI)RX' /T /C|Out-File $log -Encoding UTF8 -Append;if($LASTEXITCODE -ne 0){throw 'Unable to grant service read access'}}
- & icacls.exe $Storage /inheritance:r /grant:r '*S-1-5-18:(OI)(CI)F' '*S-1-5-32-544:(OI)(CI)F' /T /C|Out-File $log -Encoding UTF8 -Append
- if($LASTEXITCODE -ne 0){throw 'Unable to protect managed storage ACLs'}
- foreach($path in @((Join-Path $Root 'data'),(Join-Path $Root 'logs'),(Join-Path $Root 'backups'),(Join-Path $Root 'config'),$Storage)){& icacls.exe $path /grant 'NT SERVICE\BeastCloud:(OI)(CI)M' /T /C|Out-File $log -Encoding UTF8 -Append;if($LASTEXITCODE -ne 0){throw 'Unable to grant service data access'}}
+ foreach($path in @($target,(Join-Path $Root 'config'))){Grant-BeastTreeAccess -Path $path -Identities @('NT SERVICE\BeastCloud') -Rights RX -LogPath $log}
+ Grant-BeastTreeAccess -Path $Storage -Identities @('*S-1-5-18','*S-1-5-32-544') -Rights F -Protect -LogPath $log
+ foreach($path in @((Join-Path $Root 'data'),(Join-Path $Root 'logs'),(Join-Path $Root 'backups'),(Join-Path $Root 'config'),$Storage)){Grant-BeastTreeAccess -Path $path -Identities @('NT SERVICE\BeastCloud') -Rights M -LogPath $log}
  $reg='HKLM:\SYSTEM\CurrentControlSet\Services\BeastCloud'
  New-ItemProperty $reg -Name Environment -PropertyType MultiString -Value @("BEAST_ROOT=$Root",'DOTNET_CLI_TELEMETRY_OPTOUT=1') -Force|Out-Null
  $stage='Starting the Windows service'
@@ -136,12 +133,12 @@ try {
  $ready=$false
  for($i=0;$i -lt 30;$i++){try{$response=Invoke-RestMethod "$url/api/health" -TimeoutSec 2;if($response.status -eq 'ready'){$ready=$true;break}}catch{};Start-Sleep -Seconds 1}
  if(!$ready){throw 'Service did not pass HTTPS readiness. Check Windows Event Viewer, certificate trust and the installation log.'}
- @{executable=$exe;version=$manifest.version;installerRevision='0.1.1';storage=$Storage;port=$Port;lan=[bool]$Lan;lanAddress=$LanAddress;thumbprint=$thumbprint}|ConvertTo-Json|Set-Content (Join-Path $Root 'config\installation.json') -Encoding UTF8
+ @{executable=$exe;version=$manifest.version;installerRevision='0.1.2';storage=$Storage;port=$Port;lan=[bool]$Lan;lanAddress=$LanAddress;thumbprint=$thumbprint}|ConvertTo-Json|Set-Content (Join-Path $Root 'config\installation.json') -Encoding UTF8
  'Installation passed HTTPS readiness.'|Out-File $log -Encoding UTF8 -Append
  Write-BeastSetupLog -Path $SetupLogPath -Message 'SUCCESS: installation passed trusted HTTPS readiness'
  Write-Host "BeastCloud is running at $url. Local setup key: $Root\config\setup.key"
  if($Lan){Write-Host 'LAN listener explicitly enabled. No firewall rule was added. See docs/NETWORK.md for certificate trust and private firewall scope.'}
- Start-Process $url
+ try{Start-Process $url}catch{Write-Warning "Installation succeeded. Open $url in your browser."}
  exit 0
 } catch {
  $failure=$_.Exception.Message

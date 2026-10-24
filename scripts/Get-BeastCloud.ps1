@@ -9,7 +9,7 @@ param(
  [string]$Root='C:\BeastCloud',
  [string]$Storage='',
  [ValidateRange(1024,65535)][int]$Port=5443,
- [ValidatePattern('^(v[0-9]+\.[0-9]+\.[0-9]+|[a-f0-9]{40})$')][string]$SourceRef='v0.1.1',
+ [ValidatePattern('^(v[0-9]+\.[0-9]+\.[0-9]+|[a-f0-9]{40})$')][string]$SourceRef='v0.1.2',
  [string]$CacheDirectory='',
  [switch]$DownloadOnly
 )
@@ -145,7 +145,7 @@ try {
  $packageArgument=''
  if($manifest.installerPatch){
   $patch=$manifest.installerPatch
-  if($patch.version -ne '0.1.1' -or @($patch.files).Count -ne 4){throw 'Unsupported installer patch metadata.'}
+  if($patch.version -ne '0.1.2' -or @($patch.files).Count -ne 4){throw 'Unsupported installer patch metadata.'}
   $patchRoot=Join-Path $cache ('installer-'+$patch.version)
   Assert-SafeDownloadPath $patchRoot
   New-Item -ItemType Directory -Path $patchRoot -Force|Out-Null
@@ -157,7 +157,7 @@ try {
   }
   $installer=Join-Path $patchRoot 'Install.ps1'
   $packageArgument=' -PackagePath "'+$package+'"'
-  Write-Host 'Verified installer revision 0.1.1. Reusing the existing application package.'
+  Write-Host 'Verified installer revision 0.1.2. Reusing the existing application package.'
  }
  if($DownloadOnly){Write-Host 'Download and extraction complete. No service, account, certificate or installation was changed.';return}
  $arguments='-NoProfile -ExecutionPolicy Bypass -File "'+$installer+'" -Root "'+$Root+'" -Port '+$Port
