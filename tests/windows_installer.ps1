@@ -68,7 +68,7 @@ try {
  $listeners=@(Get-NetTCPConnection -State Listen -LocalPort 55443 -ErrorAction SilentlyContinue)
  Write-Host "::error title=Native listener diagnostic::Service process: $($serviceInfo.ProcessId); listening addresses: $($listeners.LocalAddress -join ',')"
  try{
-  foreach($event in Get-WinEvent -FilterHashtable @{LogName='Application';StartTime=(Get-Date).AddMinutes(-10);Level=@(2,3)} -MaxEvents 20 -ErrorAction SilentlyContinue|Where-Object {$_.ProviderName -in @('.NET Runtime','Application Error','BeastCloud.Server') -and $_.Message -match 'BeastCloud'}){
+  foreach($event in Get-WinEvent -FilterHashtable @{LogName='Application';ProviderName=@('.NET Runtime','Application Error');StartTime=(Get-Date).AddMinutes(-10);Level=@(2,3)} -MaxEvents 5 -ErrorAction SilentlyContinue|Where-Object {$_.Message -match 'BeastCloud'}){
    $message=$event.Message.Substring(0,[Math]::Min(1800,$event.Message.Length)).Replace('%','%25').Replace("`r",'%0D').Replace("`n",'%0A')
    Write-Host "::error title=Native application event::$message"
   }
