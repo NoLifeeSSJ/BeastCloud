@@ -43,10 +43,15 @@ try {
    # Reproduce the exact 0.1.1 failure: this command strips inherited file
    # permissions, but its directory-only grants do not apply to existing files.
    Stop-Service BeastCloud
+   # Failed 0.1.1 provisioning had not yet granted the service access to its marker.
+   & icacls.exe (Join-Path $root 'config\installation.json') /remove:g 'NT SERVICE\BeastCloud'|Out-Null
+   if($LASTEXITCODE -ne 0){throw 'Unable to prepare the provisioning marker regression fixture.'}
    & icacls.exe $root /inheritance:r /grant:r '*S-1-5-18:(OI)(CI)F' '*S-1-5-32-544:(OI)(CI)F' /T /C|Out-Null
    if($LASTEXITCODE -ne 0){throw 'Unable to prepare the damaged-permissions regression fixture.'}
    $damaged=Get-Acl -LiteralPath (Join-Path $root 'scripts\Build.ps1')
    if(@($damaged.Access).Count -ne 0){throw 'The old permissions command did not reproduce an empty file DACL.'}
+   $markerAcl=Get-Acl -LiteralPath (Join-Path $root 'config\installation.json')
+   if(@($markerAcl.Access).Count -ne 0){throw 'The provisioning marker does not have the expected empty DACL.'}
   }elseif((Get-Content -LiteralPath (Join-Path $root 'data\installer-sentinel.txt') -Raw).Trim() -ne 'preserved fixture'){
    throw 'An installer retry changed the data sentinel.'
   }
