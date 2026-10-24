@@ -31,7 +31,7 @@ try {
  foreach($attempt in 1..3){
   $diagnostic=Join-Path $OutputDirectory ("setup-attempt-$attempt.log")
   # The server's browser launch is best effort on headless runners.
-  & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $installer -Root $root -PackagePath $package -Port 55443 -SetupLogPath $diagnostic
+  & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $installer -Root $root -PackagePath $package -RuntimePatchPath (Join-Path $repository 'distribution\0.1.0\installer\BeastCloud.Server.dll') -Port 55443 -SetupLogPath $diagnostic
   if($LASTEXITCODE -ne 0){throw "Native installer attempt $attempt failed ($LASTEXITCODE)."}
   $installation=Get-Content -LiteralPath (Join-Path $root 'config\installation.json') -Raw|ConvertFrom-Json
   $thumbprint=$installation.thumbprint

@@ -6,7 +6,7 @@ The GitHub release-upload API was blocked in the cloud workspace. To deliver the
 Open **64-bit Windows PowerShell** on Windows 11 or Server 2022+ and paste this one command:
 
 ```powershell
-& { $ErrorActionPreference='Stop'; [Net.ServicePointManager]::SecurityProtocol=[Net.SecurityProtocolType]::Tls12; $p=Join-Path $env:TEMP ('BeastCloud-'+[guid]::NewGuid().ToString('N')+'.ps1'); try { Invoke-WebRequest -UseBasicParsing 'https://raw.githubusercontent.com/NoLifeeSSJ/BeastCloud/v0.1.1/scripts/Get-BeastCloud.ps1' -OutFile $p; powershell.exe -NoProfile -ExecutionPolicy Bypass -File $p; if($LASTEXITCODE -ne 0){throw "BeastCloud installer failed ($LASTEXITCODE)"} } finally { if(Test-Path -LiteralPath $p){Remove-Item -LiteralPath $p -Force} } }
+& { $ErrorActionPreference='Stop'; [Net.ServicePointManager]::SecurityProtocol=[Net.SecurityProtocolType]::Tls12; $p=Join-Path $env:TEMP ('BeastCloud-'+[guid]::NewGuid().ToString('N')+'.ps1'); try { Invoke-WebRequest -UseBasicParsing 'https://raw.githubusercontent.com/NoLifeeSSJ/BeastCloud/v0.1.2/scripts/Get-BeastCloud.ps1' -OutFile $p; powershell.exe -NoProfile -ExecutionPolicy Bypass -File $p; if($LASTEXITCODE -ne 0){throw "BeastCloud installer failed ($LASTEXITCODE)"} } finally { if(Test-Path -LiteralPath $p){Remove-Item -LiteralPath $p -Force} } }
 ```
 
 It downloads the bootstrap from the version tag over trusted HTTPS, downloads and verifies each part, combines/verifies the complete ZIP, safely extracts it, checks the package manifest and invokes the existing Windows installer. A UAC prompt is expected. No Git, Node, .NET SDK, manual ZIP handling, GitHub account or token is required for the public repository download. The execution-policy setting is limited to the installer process; TLS validation remains enabled.
@@ -15,11 +15,21 @@ Default application root: `C:\BeastCloud`. Default original storage: `C:\BeastCl
 
 For another explicitly chosen managed disk, save the bootstrap locally and invoke it with `-Storage 'D:\BeastCloudData'`. `-Root` and `-Port` are also available; pass the same arguments when rerunning. Changing a live storage/network binding is deliberate maintenance, not an automatic move. LAN mode is not enabled by the bootstrap.
 
-## Installer repair revision 0.1.1
+## Installer repair revision 0.1.2
 
-Revision 0.1.1 keeps application 0.1.0 and the original archive/parts unchanged, so an existing successful download is reused. The versioned download manifest also lists four small installer/support files with individual sizes and SHA-256 hashes. The bootstrap verifies them before executing the corrected installer against the verified original application package. No files in the immutable cached package are patched in place, and v0.1.0's tag is not replaced.
+Revision 0.1.2 reuses the original 0.1.0 archive/parts and an existing successful download. The versioned manifest lists four small installer/support files and a 179-KiB repaired server DLL with individual sizes and SHA-256 hashes. The bootstrap verifies all five before executing the corrected installer against the original verified application package. The installer stages the repaired DLL in the new application directory. The cached package and older version tags are preserved.
 
 The certificate SAN extension is now built as one string before adding it to the extension array. The earlier comma/concatenation expression incorrectly produced separate extension values. Temporary diagnostics are created before preflight, errors include the failing stage, elevated installer failures are returned to the calling console, and the launcher keeps non-elevated output in the same window. Setup diagnostics contain operation/error messages, not password/configuration dumps. The root installation log is written in UTF-8 consistently.
+
+Revision 0.1.2 fixes the recursive permission command that removed inherited permissions from existing files while specifying grants that Windows applied only to directories. This left files such as `scripts\Build.ps1` and `config\installation.json` with an empty DACL, denying writes even to the elevated installer. The corrected helper grants effective file rights before applying directory inheritance. It restores administrator/SYSTEM rights and the required service read/modify rights during a retry. A narrowly scoped recovery handles an administrator-owned installation marker with that exact empty-DACL condition before reading preflight metadata; unrelated nonempty roots remain refused. Existing accounts, stored files and backups are preserved.
+
+The service stops before permission changes and the pre-update checkpoint. Explicit administrator/SYSTEM file grants are installed before inherited grants are removed. For already damaged service-owned files with a protected empty DACL, recovery takes administrator ownership of those files and restores access; it does not change their contents.
+
+The dedicated `NT SERVICE\BeastCloud` virtual account is configured through Windows Service Control Manager without a password. This also fixes the Windows WMI provider rejecting the earlier account-change request with return code 22. Failure to open a browser after successful installation no longer marks a healthy service as failed.
+
+Each installer process selects TLS 1.2 for Windows PowerShell 5.1, including after elevation. Readiness probes the configured `127.0.0.1` HTTPS listener directly with certificate validation enabled and reports the last connection error if startup fails.
+
+The runtime repair disables SQLite connection pooling for backup snapshots and verification. Disposing a pooled snapshot connection had left the database file open on Windows, preventing the completed backup directory from being renamed. The repair changes no database schema. Its staged runtime creates the pre-update checkpoint so an affected older runtime can also be updated safely. The app still reports 0.1.0; the installer/runtime repair revision is 0.1.2.
 
 To retry after an early failure, run the new command above, preferably in PowerShell as Administrator. It preserves marked installations/accounts/data and keeps the usual refusal of unrelated nonempty directories. A fresh diagnostic is printed as `%TEMP%\BeastCloud-setup-<id>.log`; this works even when C:\BeastCloud does not exist or its protected logs are not readable. If another Windows-specific issue occurs, report the `FAILED during ...` line and nearby diagnostics. Never delete an existing installation to clear a download error.
 
@@ -27,13 +37,13 @@ Five portable helper regressions and ten downloader regressions cover the certif
 
 ## Offline installation with the repair
 
-After running the new bootstrap with `-DownloadOnly`, copy the entire verified cache directory (or its `package` and `installer-0.1.1` folders together) to an owned offline Windows computer. From the directory containing those two folders run:
+After running the new bootstrap with `-DownloadOnly`, copy the entire verified cache directory (or its `package` and `installer-0.1.2` folders together) to an owned offline Windows computer. From the directory containing those two folders run:
 
 ```powershell
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File ".\installer-0.1.1\Install.ps1" -PackagePath ".\package"
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File ".\installer-0.1.2\Install.ps1" -PackagePath ".\package" -RuntimePatchPath ".\installer-0.1.2\BeastCloud.Server.dll"
 ```
 
-The fixed installer checks the original package without changing its cached files. Do not run the old archive's `package\scripts\Install.ps1` directly. The app remains version 0.1.0; this is installer revision 0.1.1. Temporary setup diagnostics stay in the caller's local TEMP folder for troubleshooting and can be removed after the issue is resolved.
+The fixed installer checks the original package without changing its cached files. Do not run the old archive's `package\scripts\Install.ps1` directly. The app remains version 0.1.0; this is installer revision 0.1.2. Temporary setup diagnostics stay in the caller's local TEMP folder for troubleshooting and can be removed after the issue is resolved.
 
 ## Interrupted downloads and verification
 

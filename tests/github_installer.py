@@ -59,13 +59,13 @@ if($LASTEXITCODE){exit $LASTEXITCODE}
   self.write_manifest();result=self.run_script();self.assertNotEqual(result.returncode,0);self.assertFalse((self.cache_root()/'package').exists());self.assertEqual(list(self.root.rglob('escape.txt')),[])
  def test_verified_patch_is_downloaded_without_running_it(self):
   patch=[]
-  for name in ['Install.ps1','InstallerSupport.ps1','Get-BeastCloud.ps1','GITHUB-INSTALL.md']:
+  for name in ['Install.ps1','InstallerSupport.ps1','Get-BeastCloud.ps1','GITHUB-INSTALL.md','BeastCloud.Server.dll']:
    content=b'throw "Patch must not execute in DownloadOnly mode"';(self.fixture/name).write_bytes(content);patch.append(dict(name=name,bytes=len(content),sha256=hashlib.sha256(content).hexdigest()))
   self.manifest['installerPatch']=dict(version='0.1.2',files=patch);self.write_manifest()
   result=self.run_script();self.assertEqual(result.returncode,0,result.stdout+result.stderr);self.assertTrue((self.cache_root()/'installer-0.1.2/Install.ps1').exists());self.assertIn('Verified installer revision 0.1.2',result.stdout)
  def test_bad_installer_patch_is_rejected(self):
   patch=[]
-  for name in ['Install.ps1','InstallerSupport.ps1','Get-BeastCloud.ps1','GITHUB-INSTALL.md']:
+  for name in ['Install.ps1','InstallerSupport.ps1','Get-BeastCloud.ps1','GITHUB-INSTALL.md','BeastCloud.Server.dll']:
    content=b'fixture';(self.fixture/name).write_bytes(content);patch.append(dict(name=name,bytes=len(content),sha256='0'*64))
   self.manifest['installerPatch']=dict(version='0.1.2',files=patch);self.write_manifest()
   result=self.run_script();self.assertNotEqual(result.returncode,0);self.assertFalse((self.cache_root()/'installer-0.1.2/Install.ps1').exists())

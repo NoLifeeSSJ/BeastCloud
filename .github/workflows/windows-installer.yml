@@ -5,6 +5,7 @@ on:
     paths:
       - scripts/Install.ps1
       - scripts/InstallerSupport.ps1
+      - distribution/0.1.0/installer/BeastCloud.Server.dll
       - tests/windows_installer.ps1
       - .github/workflows/windows-installer.yml
   workflow_dispatch:

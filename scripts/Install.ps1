@@ -1,6 +1,6 @@
 #requires -Version 5.1
 [CmdletBinding()]
-param([string]$Root='C:\BeastCloud',[int]$Port=5443,[string]$Storage='', [switch]$Lan,[string]$LanAddress='',[switch]$Elevated,[string]$PackagePath='',[string]$SetupLogPath='')
+param([string]$Root='C:\BeastCloud',[int]$Port=5443,[string]$Storage='', [switch]$Lan,[string]$LanAddress='',[switch]$Elevated,[string]$PackagePath='',[string]$SetupLogPath='',[string]$RuntimePatchPath='')
 $ErrorActionPreference='Stop'
 $ProgressPreference='SilentlyContinue'
 # Windows PowerShell 5.1's TLS setting is process-local; elevation starts a new
@@ -20,11 +20,12 @@ try {
  if ($env:OS -ne 'Windows_NT') { throw 'BeastCloud installation requires Windows.' }
  if ([Environment]::OSVersion.Version.Build -lt 20348) { throw 'Windows 11 or Windows Server 2022 (or later) is required.' }
  if ($env:PROCESSOR_ARCHITECTURE -ne 'AMD64') { throw 'This package requires Windows x64. Use 64-bit PowerShell.' }
- foreach ($p in @($Root,$Storage,$LanAddress,$PackagePath,$SetupLogPath)) { if ($p -match '["\r\n]') { throw 'Arguments may not contain quotes or newlines.' } }
+ foreach ($p in @($Root,$Storage,$LanAddress,$PackagePath,$SetupLogPath,$RuntimePatchPath)) { if ($p -match '["\r\n]') { throw 'Arguments may not contain quotes or newlines.' } }
  $Root=[IO.Path]::GetFullPath($Root).TrimEnd('\')
  if (!$Storage) {$Storage=Join-Path $Root 'data\files'}
  $Storage=[IO.Path]::GetFullPath($Storage).TrimEnd('\')
  if($PackagePath){$PackagePath=[IO.Path]::GetFullPath($PackagePath)}
+ if($RuntimePatchPath){$RuntimePatchPath=[IO.Path]::GetFullPath($RuntimePatchPath)}
  $SetupLogPath=[IO.Path]::GetFullPath($SetupLogPath)
  if ($Root.StartsWith('\\') -or $Storage.StartsWith('\\') -or $Root.Length -lt 4 -or $Storage.Length -lt 4) {throw 'Use a dedicated directory on a local disk.'}
  if ($Port -lt 1024 -or $Port -gt 65535) {throw 'Choose a port from 1024 through 65535.'}
@@ -37,6 +38,7 @@ try {
   $arguments='-NoProfile -ExecutionPolicy Bypass -File "'+$PSCommandPath+'" -Root "'+$Root+'" -Storage "'+$Storage+'" -Port '+$Port+' -Elevated'
   if ($Lan) {$arguments+=' -Lan -LanAddress "'+$LanAddress+'"'}
   if($PackagePath){$arguments+=' -PackagePath "'+$PackagePath+'"'}
+  if($RuntimePatchPath){$arguments+=' -RuntimePatchPath "'+$RuntimePatchPath+'"'}
   $arguments+=' -SetupLogPath "'+$SetupLogPath+'"'
   $proc=Start-Process -FilePath "$env:SystemRoot\System32\WindowsPowerShell\v1.0\powershell.exe" -ArgumentList $arguments -Verb RunAs -Wait -PassThru
   if($proc.ExitCode -ne 0){Write-Host 'The elevated installer failed. Its detailed diagnostic follows:' -ForegroundColor Red;Get-Content -LiteralPath $SetupLogPath -Encoding UTF8 -Tail 50|ForEach-Object {Write-Host $_};Write-Host "Diagnostic log: $SetupLogPath"}
@@ -46,6 +48,7 @@ try {
  $package=if($PackagePath){[IO.Path]::GetFullPath($PackagePath)}else{Split-Path $PSScriptRoot -Parent}
  . (Join-Path $package 'scripts/Package.ps1')
  $manifest=Test-BeastPackage $package
+ if($RuntimePatchPath){Assert-NoReparse $RuntimePatchPath;$patchItem=Get-Item -LiteralPath $RuntimePatchPath -Force;if($patchItem.PSIsContainer -or ($patchItem.Attributes -band [IO.FileAttributes]::ReparsePoint) -or $patchItem.Name -ne 'BeastCloud.Server.dll' -or $manifest.version -ne '0.1.0'){throw 'Unsupported runtime repair file.'}}
  Write-BeastSetupLog -Path $SetupLogPath -Message 'Application package checksums passed'
  $stage='Checking target paths, service, port, and disk space'
  if(Test-Path $Root){Assert-NoReparse $Root;Assert-NoReparse (Join-Path $Root 'config');Repair-BeastInstallationMarkerAccess -Path (Join-Path $Root 'config\installation.json') -SetupLogPath $SetupLogPath; if(!(Test-Path (Join-Path $Root 'config\installation.json')) -and (Get-ChildItem -Force $Root|Measure-Object).Count -gt 0){throw 'Target is not a marked BeastCloud installation. Existing files were preserved. Choose an empty root.'}}
@@ -76,15 +79,24 @@ try {
  $log=Join-Path $Root ('logs\install-'+(Get-Date -Format yyyyMMdd-HHmmss)+'.log')
  'Beginning local package installation'|Out-File $log -Encoding UTF8
  Write-BeastSetupLog -Path $SetupLogPath -Message "Local installation log: $log"
- $stage='Creating a recovery checkpoint'
  $env:BEAST_ROOT=$Root
- if($existing -and (Test-Path (Join-Path $Root 'data\db\beast.db'))){$exe=(Get-Content (Join-Path $Root 'config\installation.json') -Raw|ConvertFrom-Json).executable;& $exe --backup;if($LASTEXITCODE -ne 0){throw 'Pre-update backup failed. Installation stopped.'}}
- $stage='Copying the application and installer scripts'
+ $stage='Staging the verified application'
  Write-BeastSetupLog -Path $SetupLogPath -Message $stage
  $version=$manifest.version+'-'+(Get-Date -Format yyyyMMddHHmmss)
  $target=Join-Path $Root ('app\'+$version)
  New-Item -ItemType Directory $target|Out-Null
  Copy-Item (Join-Path $package 'server\*') $target -Recurse
+ if($RuntimePatchPath){Copy-Item -LiteralPath $RuntimePatchPath -Destination (Join-Path $target 'BeastCloud.Server.dll') -Force}
+ $stage='Creating a recovery checkpoint'
+ if($existing -and (Test-Path (Join-Path $Root 'data\db\beast.db'))){
+  # This repair changes SQLite backup connection lifetime, with no schema change.
+  # Use its staged runtime to checkpoint an old app affected by the Windows lock bug.
+  $checkpointExe=if($RuntimePatchPath){Join-Path $target 'BeastCloud.Server.exe'}else{(Get-Content (Join-Path $Root 'config\installation.json') -Raw|ConvertFrom-Json).executable}
+  & $checkpointExe --backup
+  if($LASTEXITCODE -ne 0){throw 'Pre-update backup failed. Installation stopped.'}
+ }
+ $stage='Copying the installer scripts and documentation'
+ Write-BeastSetupLog -Path $SetupLogPath -Message $stage
  Copy-Item (Join-Path $package 'scripts\*') (Join-Path $Root 'scripts') -Force
  foreach($patched in @('Install.ps1','InstallerSupport.ps1','Get-BeastCloud.ps1')){$source=Join-Path $PSScriptRoot $patched;$destination=Join-Path $Root ('scripts\'+$patched);if([IO.Path]::GetFullPath($source) -ne [IO.Path]::GetFullPath($destination)){Copy-Item -LiteralPath $source -Destination $destination -Force}}
  Copy-Item (Join-Path $package 'docs\*') (Join-Path $Root 'docs') -Recurse -Force

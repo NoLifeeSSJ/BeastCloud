@@ -28,27 +28,32 @@
     }
   ],
   "installerPatch": {
-    "version": "0.1.1",
+    "version": "0.1.2",
     "files": [
       {
         "name": "Install.ps1",
-        "bytes": 15201,
-        "sha256": "fb9099be8543d13ce0a03665b77e10a76711450d338fcb811468e7ba1a06383e"
+        "bytes": 17227,
+        "sha256": "f4677813f94477f0c9a4f63bbe5514da3dcd2ca5fda3b907c53054059ea7eb92"
       },
       {
         "name": "InstallerSupport.ps1",
-        "bytes": 1447,
-        "sha256": "ef87540f52e1cc3e9ea16fdc7f641024b8f0cf26476bcda976d6293289db90ef"
+        "bytes": 5834,
+        "sha256": "04528ddf67368bf9e66ac88ee254f6781318697892a67b121fbdb485e482f1e4"
       },
       {
         "name": "Get-BeastCloud.ps1",
-        "bytes": 11511,
-        "sha256": "5fb3e966a0eee22e9cf5ee74df87e27124b4dd12c6370bc0ee75b573a96d15c1"
+        "bytes": 11692,
+        "sha256": "e36ef6964987004c4f2054a8cbbcda3330bd3857cd2755d89cc642a176e57168"
       },
       {
         "name": "GITHUB-INSTALL.md",
-        "bytes": 6689,
-        "sha256": "f5c073ff444980ba37880d988a4d9fda7c338699d6718bc20b6f240526111eed"
+        "bytes": 8932,
+        "sha256": "33961f623a56607cf2a8da1eedae98d13c3e6a6e365aa8c87b4f721f0e67d579"
+      },
+      {
+        "name": "BeastCloud.Server.dll",
+        "bytes": 183296,
+        "sha256": "fe713b3e179c428551a75b813db6d33854bb7ea1fc6cdb8c9be64393219b2c51"
       }
     ]
   }

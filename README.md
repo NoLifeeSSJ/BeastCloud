@@ -6,11 +6,11 @@ Your files, memories, and everyday plans, on hardware you own. BeastCloud is a l
 
 ## Install directly from GitHub (no manual download or extraction)
 
-Use the single Windows PowerShell command in [the GitHub installation guide](docs/GITHUB-INSTALL.md). It automatically downloads, verifies, combines and extracts the versioned Windows package, then runs the local installer. A UAC prompt is expected. No development tools or GitHub login are needed for this public download. Installer revision **0.1.1** fixes certificate generation and preserves visible setup diagnostics; it reuses the original verified application package.
+Use the single Windows PowerShell command in [the GitHub installation guide](docs/GITHUB-INSTALL.md). It automatically downloads, verifies, combines and extracts the versioned Windows package, then runs the local installer. A UAC prompt is expected. No development tools or GitHub login are needed for this public download. Installer revision **0.1.2** repairs file permissions left by earlier failed attempts, includes the certificate fix and visible diagnostics, and reuses the original verified application package.
 
 ## Install from the delivered offline package
 
-For the **original v0.1.0 archive already uploaded to GitHub**, use the corrected GitHub installer above or copy the verified download cache's `package` and `installer-0.1.1` folders to the offline computer and follow the offline repair command in [GITHUB-INSTALL.md](docs/GITHUB-INSTALL.md). The original archive is preserved unchanged; its old installer has the certificate bug. Fresh builds from the current source include the corrected installer.
+For the **original v0.1.0 archive already uploaded to GitHub**, use the corrected GitHub installer above or copy the verified download cache's `package` and `installer-0.1.2` folders to the offline computer and follow the offline repair command in [GITHUB-INSTALL.md](docs/GITHUB-INSTALL.md). The original archive is preserved unchanged; its old installer has certificate and file-permission bugs. Fresh builds from the current source include the corrected installer.
 
 The generated local package is `releases/BeastCloud-0.1.0-win-x64.zip`. Its SHA-256 is in the adjacent `.zip.sha256`; the extracted package contains a per-file checksum manifest. These are integrity checks, **not a digital signature or independent proof of authenticity**. Obtain the package from a source you trust and compare the archive hash separately. There is no fabricated release/download URL.
 
