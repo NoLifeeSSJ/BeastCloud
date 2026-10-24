@@ -45,6 +45,13 @@ try {
  'PASS: native Windows PowerShell 5.1 installation, protected-file replacement, service identity, trusted HTTPS and data preservation.'|Tee-Object -FilePath (Join-Path $OutputDirectory 'result.txt')
 }catch{
  # A short annotation is readable even when Actions log/artifact access needs sign-in.
+ foreach($path in @((Join-Path $root 'scripts'),(Join-Path $root 'scripts\Build.ps1'))){
+  try{
+   $item=Get-Item -LiteralPath $path -Force
+   $sddl=(Get-Acl -LiteralPath $path).Sddl
+   Write-Host "::error title=Fixture file permissions::$path attributes=$($item.Attributes) ACL=$sddl"
+  }catch{Write-Host "::error title=Fixture file permissions::$path : $($_.Exception.Message)"}
+ }
  foreach($diagnostic in Get-ChildItem -LiteralPath $OutputDirectory -Filter 'setup-attempt-*.log'){
   foreach($line in Get-Content -LiteralPath $diagnostic.FullName -Encoding UTF8|Select-Object -Last 6){
    $escaped=$line.Replace('%','%25').Replace("`r",'%0D').Replace("`n",'%0A')
