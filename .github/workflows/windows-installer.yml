@@ -1,0 +1,31 @@
+name: Windows installer
+on:
+  push:
+    branches: [main]
+    paths:
+      - scripts/Install.ps1
+      - scripts/InstallerSupport.ps1
+      - tests/windows_installer.ps1
+      - .github/workflows/windows-installer.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  install-and-retry:
+    runs-on: windows-2022
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install and retry using Windows PowerShell 5.1
+        shell: powershell
+        run: ./tests/windows_installer.ps1 -OutputDirectory "$env:RUNNER_TEMP\BeastCloud-test-results"
+      - name: Save bounded setup diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-installer-diagnostics
+          path: |
+            ${{ runner.temp }}/BeastCloud-test-results/*.log
+            ${{ runner.temp }}/BeastCloud-test-results/result.txt
+            ${{ runner.temp }}/BeastCloud-test-results/installation-logs/*.log
+          retention-days: 7
