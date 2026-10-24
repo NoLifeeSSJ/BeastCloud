@@ -1,0 +1,30 @@
+{
+  "format": 1,
+  "version": "0.1.0",
+  "platform": "win-x64",
+  "archive": "BeastCloud-0.1.0-win-x64.zip",
+  "bytes": 115125360,
+  "sha256": "1dc45d87528fb857be95cb71f16288b495e150adee57f24c3a4184f9aa001f58",
+  "parts": [
+    {
+      "name": "BeastCloud-0.1.0-win-x64.zip.part001",
+      "bytes": 33554432,
+      "sha256": "216222bab9586347d28b5007e3080a7e83457628c7ca1f1f365d06677d198389"
+    },
+    {
+      "name": "BeastCloud-0.1.0-win-x64.zip.part002",
+      "bytes": 33554432,
+      "sha256": "f5adb890b9a1eefbeb71bfe87fd55cbf8fc0d54bb7f0ce1b26c4c417c15c4b82"
+    },
+    {
+      "name": "BeastCloud-0.1.0-win-x64.zip.part003",
+      "bytes": 33554432,
+      "sha256": "0664ca0441535016766ebef0e3999f064f73fe283a7fb754dd6e632599e0799a"
+    },
+    {
+      "name": "BeastCloud-0.1.0-win-x64.zip.part004",
+      "bytes": 14462064,
+      "sha256": "a696f0231f9df49ca4d8d92a60d6c53dafd840944b3673ed4f69dc7ec15cc150"
+    }
+  ]
+}

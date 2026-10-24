@@ -11,3 +11,12 @@ test-results/
 **/test-results/
 **/playwright-report/
 **/*.tsbuildinfo
+
+# Never publish installed or user-owned runtime state.
+/app/
+/config/
+/data/
+/logs/
+/backups/
+*.pfx
+*.p12

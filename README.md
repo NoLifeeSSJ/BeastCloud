@@ -4,6 +4,10 @@ Your files, memories, and everyday plans, on hardware you own. BeastCloud is a l
 
 **Release 0.1.0 is a working initial implementation, not a claim of production certification or complete acceptance on Windows.** The portable server and browser workflows have been exercised on Linux. Windows service installation, reboot recovery, certificate-store changes, Windows PowerShell 5.1 execution, and actual Windows-to-Windows DPAPI pairing still require the Windows acceptance procedure. Read [the feature matrix](docs/FEATURES.md) and [verification report](docs/VERIFICATION.md) before trusting it with your only copy of important data.
 
+## Install directly from GitHub (no manual download or extraction)
+
+Use the single Windows PowerShell command in [the GitHub installation guide](docs/GITHUB-INSTALL.md). It automatically downloads, verifies, combines and extracts the versioned Windows package, then runs the local installer. A UAC prompt is expected. No development tools or GitHub login are needed for this public download.
+
 ## Install from the delivered offline package
 
 The generated local package is `releases/BeastCloud-0.1.0-win-x64.zip`. Its SHA-256 is in the adjacent `.zip.sha256`; the extracted package contains a per-file checksum manifest. These are integrity checks, **not a digital signature or independent proof of authenticity**. Obtain the package from a source you trust and compare the archive hash separately. There is no fabricated release/download URL.

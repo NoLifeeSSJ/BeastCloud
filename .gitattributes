@@ -1,0 +1,5 @@
+# Preserve upstream license files verbatim and keep package bytes identical on Windows.
+docs/third-party-licenses/** -text
+distribution/** -text
+*.ps1 text eol=crlf
+*.sh text eol=lf
