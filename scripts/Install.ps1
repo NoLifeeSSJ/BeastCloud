@@ -114,11 +114,18 @@ try {
  $binary='"'+$exe+'" --contentRoot "'+$target+'"'
  if(!$oldService){New-Service -Name BeastCloud -DisplayName 'BeastCloud private cloud' -BinaryPathName $binary -StartupType Automatic|Out-Null}
  $service=Get-CimInstance Win32_Service -Filter "Name='BeastCloud'"
- $changed=Invoke-CimMethod -InputObject $service -MethodName Change -Arguments @{PathName=$binary;StartMode='Automatic';StartName='NT SERVICE\BeastCloud';StartPassword=''}
+ $changed=Invoke-CimMethod -InputObject $service -MethodName Change -Arguments @{PathName=$binary;StartMode='Automatic'}
  if($changed.ReturnValue -ne 0){throw "Service configuration failed: $($changed.ReturnValue)"}
  & sc.exe sidtype BeastCloud unrestricted|Out-File $log -Encoding UTF8 -Append
+ if($LASTEXITCODE -ne 0){throw 'Unable to configure the Windows service SID.'}
+ # Configure the virtual account through SCM without a password. The WMI
+ # provider rejects this identity when supplied as StartName/StartPassword.
+ & sc.exe config BeastCloud obj= 'NT SERVICE\BeastCloud'|Out-File $log -Encoding UTF8 -Append
+ if($LASTEXITCODE -ne 0){throw 'Unable to configure the Windows virtual service account.'}
  & sc.exe failure BeastCloud reset= 86400 actions= restart/5000/restart/15000/restart/60000|Out-File $log -Encoding UTF8 -Append
+ if($LASTEXITCODE -ne 0){throw 'Unable to configure automatic Windows service recovery.'}
  & icacls.exe $Root /grant 'NT SERVICE\BeastCloud:RX'|Out-File $log -Encoding UTF8 -Append
+ if($LASTEXITCODE -ne 0){throw 'Unable to grant Windows service root access.'}
  foreach($path in @($target,(Join-Path $Root 'config'))){Grant-BeastTreeAccess -Path $path -Identities @('NT SERVICE\BeastCloud') -Rights RX -LogPath $log}
  Grant-BeastTreeAccess -Path $Storage -Identities @('*S-1-5-18','*S-1-5-32-544') -Rights F -Protect -LogPath $log
  foreach($path in @((Join-Path $Root 'data'),(Join-Path $Root 'logs'),(Join-Path $Root 'backups'),(Join-Path $Root 'config'),$Storage)){Grant-BeastTreeAccess -Path $path -Identities @('NT SERVICE\BeastCloud') -Rights M -LogPath $log}
