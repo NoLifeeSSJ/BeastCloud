@@ -38,7 +38,7 @@ try {
   if((Get-Service BeastCloud).Status -ne 'Running'){throw 'The Windows service is not running.'}
   $service=Get-CimInstance Win32_Service -Filter "Name='BeastCloud'"
   if($service.StartName -ne 'NT SERVICE\BeastCloud'){throw 'The service is not using its dedicated virtual account.'}
-  if((Invoke-RestMethod 'https://localhost:55443/api/health').status -ne 'ready'){throw 'Trusted HTTPS did not become ready.'}
+  if((Invoke-RestMethod 'https://127.0.0.1:55443/api/health' -TimeoutSec 10).status -ne 'ready'){throw 'Trusted HTTPS did not become ready.'}
   if($attempt -eq 1){
    'preserved fixture'|Set-Content -LiteralPath (Join-Path $root 'data\installer-sentinel.txt')
    # Reproduce the exact 0.1.1 failure: this command strips inherited file

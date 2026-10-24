@@ -140,9 +140,13 @@ try {
  $stage='Checking trusted HTTPS readiness'
  $address='localhost'
  $url="https://${address}:$Port"
+ # Match the IPv4 listener directly. Windows PowerShell can spend its short
+ # timeout trying localhost's IPv6 address before falling back to IPv4.
+ $healthUrl="https://127.0.0.1:$Port/api/health"
  $ready=$false
  $readinessFailure='No ready response received.'
- for($i=0;$i -lt 30;$i++){try{$response=Invoke-RestMethod "$url/api/health" -TimeoutSec 2;if($response.status -eq 'ready'){$ready=$true;break};$readinessFailure='Unexpected health response status: '+[string]$response.status}catch{$readinessFailure=$_.Exception.Message};Start-Sleep -Seconds 1}
+ $deadline=(Get-Date).AddSeconds(60)
+ do{try{$response=Invoke-RestMethod $healthUrl -TimeoutSec 5;if($response.status -eq 'ready'){$ready=$true;break};$readinessFailure='Unexpected health response status: '+[string]$response.status}catch{$readinessFailure=$_.Exception.Message};Start-Sleep -Seconds 1}while((Get-Date) -lt $deadline)
  if(!$ready){throw "Service did not pass trusted HTTPS readiness: $readinessFailure Check Windows Event Viewer and the installation log."}
  @{executable=$exe;version=$manifest.version;installerRevision='0.1.2';storage=$Storage;port=$Port;lan=[bool]$Lan;lanAddress=$LanAddress;thumbprint=$thumbprint}|ConvertTo-Json|Set-Content (Join-Path $Root 'config\installation.json') -Encoding UTF8
  'Installation passed HTTPS readiness.'|Out-File $log -Encoding UTF8 -Append
