@@ -1,0 +1,54 @@
+{
+  "date": "2026-10-24",
+  "host": "Linux x64 cloud workspace",
+  "dotnetSdk": "10.0.402",
+  "dotnetRuntime": "10.0.10",
+  "node": "24.19.0",
+  "suites": {
+    "httpIntegration": {
+      "passed": 20,
+      "failed": 0,
+      "skipped": 0,
+      "seconds": 9.543
+    },
+    "coreAndSync": {
+      "passed": 19,
+      "failed": 0,
+      "skipped": 0,
+      "seconds": 0.462
+    },
+    "frontend": {
+      "passed": 7,
+      "failed": 0,
+      "skipped": 0
+    },
+    "browser": {
+      "passed": 2,
+      "failed": 0,
+      "skipped": 0,
+      "seconds": 8.2,
+      "viewports": [
+        "1440x1100",
+        "390x844"
+      ]
+    }
+  },
+  "totalTestsPassed": 48,
+  "audits": {
+    "npmAllDependenciesKnownVulnerabilities": 0,
+    "nugetAllDependenciesKnownVulnerabilities": 0
+  },
+  "windowsExecution": "UNVERIFIED - see VERIFICATION.md",
+  "powershell": {
+    "parser": "7.5.4 on Linux",
+    "syntaxErrors": 0,
+    "WindowsPowerShell5_1Execution": "UNVERIFIED"
+  },
+  "fixtures": {
+    "resumableUploadBytes": 5242880,
+    "syncUploadBytes": 5242880,
+    "image": "generated 2x2 PNG",
+    "data": "generated disposable records, no user files"
+  },
+  "selfContainedLinuxPackageSmoke": "PASS: no Node/.NET on PATH; disabled external proxies; health, static assets, local owner setup and authenticated read/write"
+}

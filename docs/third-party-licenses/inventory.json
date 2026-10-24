@@ -1,0 +1,159 @@
+[
+  {
+    "package": "Microsoft.Data.Sqlite",
+    "version": "10.0.10",
+    "license": "MIT",
+    "project": "BeastCloud.Server",
+    "target": "net10.0"
+  },
+  {
+    "package": "Microsoft.Extensions.Hosting.WindowsServices",
+    "version": "10.0.10",
+    "license": "MIT",
+    "project": "BeastCloud.Server",
+    "target": "net10.0"
+  },
+  {
+    "package": "SkiaSharp",
+    "version": "4.153.1",
+    "license": "MIT",
+    "project": "BeastCloud.Server",
+    "target": "net10.0"
+  },
+  {
+    "package": "SkiaSharp.NativeAssets.Linux.NoDependencies",
+    "version": "4.153.1",
+    "license": "MIT",
+    "project": "BeastCloud.Server",
+    "target": "net10.0"
+  },
+  {
+    "package": "SQLitePCLRaw.bundle_e_sqlite3",
+    "version": "3.0.5",
+    "license": "Apache-2.0",
+    "project": "BeastCloud.Server",
+    "target": "net10.0"
+  },
+  {
+    "package": "Microsoft.Data.Sqlite.Core",
+    "version": "10.0.10",
+    "license": "MIT",
+    "project": "BeastCloud.Server",
+    "target": "net10.0"
+  },
+  {
+    "package": "SkiaSharp.NativeAssets.macOS",
+    "version": "4.153.1",
+    "license": "MIT",
+    "project": "BeastCloud.Server",
+    "target": "net10.0"
+  },
+  {
+    "package": "SkiaSharp.NativeAssets.Win32",
+    "version": "4.153.1",
+    "license": "MIT",
+    "project": "BeastCloud.Server",
+    "target": "net10.0"
+  },
+  {
+    "package": "SQLite",
+    "version": "3.53.4",
+    "license": "LICENSE.txt",
+    "project": "BeastCloud.Server",
+    "target": "net10.0"
+  },
+  {
+    "package": "SQLitePCLRaw.config.e_sqlite3",
+    "version": "3.0.5",
+    "license": "Apache-2.0",
+    "project": "BeastCloud.Server",
+    "target": "net10.0"
+  },
+  {
+    "package": "SQLitePCLRaw.core",
+    "version": "3.0.5",
+    "license": "Apache-2.0",
+    "project": "BeastCloud.Server",
+    "target": "net10.0"
+  },
+  {
+    "package": "SQLitePCLRaw.provider.e_sqlite3",
+    "version": "3.0.5",
+    "license": "Apache-2.0",
+    "project": "BeastCloud.Server",
+    "target": "net10.0"
+  },
+  {
+    "package": "System.ServiceProcess.ServiceController",
+    "version": "10.0.10",
+    "license": "MIT",
+    "project": "BeastCloud.Server",
+    "target": "net10.0"
+  },
+  {
+    "package": "SkiaSharp.NativeAssets.Linux.NoDependencies",
+    "version": "4.153.1",
+    "license": "MIT",
+    "project": "BeastCloud.Server",
+    "target": "net10.0/linux-x64"
+  },
+  {
+    "package": "SkiaSharp.NativeAssets.macOS",
+    "version": "4.153.1",
+    "license": "MIT",
+    "project": "BeastCloud.Server",
+    "target": "net10.0/linux-x64"
+  },
+  {
+    "package": "SkiaSharp.NativeAssets.Win32",
+    "version": "4.153.1",
+    "license": "MIT",
+    "project": "BeastCloud.Server",
+    "target": "net10.0/linux-x64"
+  },
+  {
+    "package": "SQLite",
+    "version": "3.53.4",
+    "license": "LICENSE.txt",
+    "project": "BeastCloud.Server",
+    "target": "net10.0/linux-x64"
+  },
+  {
+    "package": "System.ServiceProcess.ServiceController",
+    "version": "10.0.10",
+    "license": "MIT",
+    "project": "BeastCloud.Server",
+    "target": "net10.0/linux-x64"
+  },
+  {
+    "package": "System.Security.Cryptography.ProtectedData",
+    "version": "10.0.0",
+    "license": "MIT",
+    "project": "BeastCloud.Sync",
+    "target": "net10.0"
+  },
+  {
+    "package": "react",
+    "version": "19.1.1",
+    "license": "MIT",
+    "project": "web"
+  },
+  {
+    "package": "react-dom",
+    "version": "19.1.1",
+    "license": "MIT",
+    "project": "web"
+  },
+  {
+    "package": "scheduler",
+    "version": "0.26.0",
+    "license": "MIT",
+    "project": "web"
+  },
+  {
+    "package": "lucide-react",
+    "version": "0.468.0",
+    "license": "ISC",
+    "project": "web"
+  }
+]

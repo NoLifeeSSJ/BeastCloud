@@ -1,0 +1,39 @@
+using SkiaSharp;
+using System.Text.Json;
+namespace BeastCloud;
+
+public sealed class Worker(Database db, Storage disk, ILogger<Worker> log) : BackgroundService
+{
+    protected override async Task ExecuteAsync(CancellationToken stop) { db.Execute("UPDATE jobs SET state='pending' WHERE state='running'"); while (!stop.IsCancellationRequested) { try { await Tick(stop); } catch (OperationCanceledException) when (stop.IsCancellationRequested) { break; } catch (Exception e) { log.LogError("Background worker failed ({Type})", e.GetType().Name); } try { await Task.Delay(db.Scalar("SELECT id FROM jobs WHERE state='pending' LIMIT 1") != null ? 100 : 1000, stop); } catch (OperationCanceledException) { break; } } }
+    async Task Tick(CancellationToken stop)
+    {
+        await disk.Gate.WaitAsync(stop); try
+        {
+            if (!DateTimeOffset.TryParse(db.Setting("lastRetention"), out var retentionCheck) || retentionCheck.AddHours(1) < DateTimeOffset.UtcNow) { var days = int.TryParse(db.Setting("retentionDays", "0"), out var retentionDays) ? retentionDays : 0; if (days > 0) { var cutoff = DateTimeOffset.UtcNow.AddDays(-days).ToString("O"); db.Transaction(c => { Database.Exec(c, "DELETE FROM shares WHERE itemId IN (SELECT id FROM items WHERE deleted<$n)", ("$n", cutoff)); Database.Exec(c, "DELETE FROM versions WHERE created<$n OR itemId IN (SELECT id FROM items WHERE deleted<$n)", ("$n", cutoff)); Database.Exec(c, "DELETE FROM items WHERE deleted<$n", ("$n", cutoff)); }); db.Job("gc", ""); } db.Set("lastRetention", Database.Now); }
+            var hours = double.TryParse(db.Setting("backupHours", "0"), out var h) ? h : 0; var last = db.Scalar("SELECT MAX(created) FROM jobs WHERE type='backup'") as string; if (hours > 0 && (last == null || DateTimeOffset.Parse(last).AddHours(hours) < DateTimeOffset.UtcNow)) db.Job("backup", "");
+            foreach (var u in db.Rows("SELECT id FROM uploads WHERE created<$n AND committed IS NULL", ("$n", DateTimeOffset.UtcNow.AddDays(-2).ToString("O")))) { File.Delete(disk.Temp((string)u["id"]!)); db.Execute("DELETE FROM uploads WHERE id=$id", ("$id", u["id"])); }
+            db.Execute("DELETE FROM sessions WHERE expires<$n", ("$n", Database.Now));
+            var job = db.Rows("SELECT * FROM jobs WHERE state='pending' ORDER BY created LIMIT 1").FirstOrDefault(); if (job == null) return; var id = (string)job["id"]!; var payload = (string)job["payload"]!; db.Execute("UPDATE jobs SET state='running',attempts=attempts+1,updated=$n WHERE id=$id", ("$n", Database.Now), ("$id", id)); try
+            {
+                switch ((string)job["type"]!)
+                {
+                    case "backup": var path = await Backup.Create(db, disk); await Backup.Verify(path); await PruneBackups(); db.Execute("UPDATE jobs SET payload=$p WHERE id=$id", ("$p", path), ("$id", id)); break;
+                    case "export": await Backup.Export(db, disk, payload); break;
+                    case "gc": Collect(); break;
+                    case "index": await IndexFile(payload); break;
+                    case "record-index": IndexRecord(payload); break;
+                    case "thumbnail": await Thumbnail(payload, stop); break;
+                    case "rebuild": db.Execute("DELETE FROM search"); foreach (var i in db.Rows("SELECT id FROM items WHERE deleted IS NULL")) db.Job("index", (string)i["id"]!); foreach (var r in db.Rows("SELECT id FROM records")) db.Job("record-index", (string)r["id"]!); break;
+                }
+                db.Execute("UPDATE jobs SET state='completed',error=NULL,updated=$n WHERE id=$id", ("$n", Database.Now), ("$id", id));
+            }
+            catch (Exception e) { db.Execute("UPDATE jobs SET state=$s,error=$e,updated=$n WHERE id=$id", ("$s", Convert.ToInt64(job["attempts"]) < 2 ? "pending" : "failed"), ("$e", e is IOException ? "Storage operation failed. Check volume availability, free space, and permissions." : e.Message[..Math.Min(300, e.Message.Length)]), ("$n", Database.Now), ("$id", id)); }
+        }
+        finally { disk.Gate.Release(); }
+    }
+    async Task PruneBackups() { var keep = int.TryParse(db.Setting("backupKeep", "14"), out var n) ? n : 14; if (keep < 1) return; var destination = db.Setting("backupDestination", Path.Combine(disk.Root, "backups")); foreach (var old in Directory.GetDirectories(destination).Where(p => File.Exists(Path.Combine(p, "manifest.json"))).OrderByDescending(Path.GetFileName).Skip(keep)) { Storage.CheckPath(old); await Backup.Verify(old); Directory.Delete(old, true); } }
+    void Collect() { disk.Available(); var used = db.Rows("SELECT blob FROM items WHERE blob IS NOT NULL UNION SELECT blob FROM versions").Select(r => (string)r["blob"]!).ToHashSet(); foreach (var f in Directory.GetFiles(disk.Files)) { var name = Path.GetFileName(f); if (System.Text.RegularExpressions.Regex.IsMatch(name, "^[a-f0-9]{32}$") && !used.Contains(name)) File.Delete(disk.Blob(name)); } }
+    async Task IndexFile(string id) { var i = db.Rows("SELECT * FROM items WHERE id=$id AND deleted IS NULL", ("$id", id)).FirstOrDefault(); db.Execute("DELETE FROM search WHERE id=$id", ("$id", id)); if (i == null) return; var text = ""; if (i["blob"] is string blob && Convert.ToInt64(i["size"]) < 1024 * 1024 && new[] { ".txt", ".md", ".csv", ".log", ".json" }.Contains(Path.GetExtension((string)i["name"]!).ToLowerInvariant())) text = await File.ReadAllTextAsync(disk.Blob(blob)); db.Execute("INSERT INTO search VALUES($id,'file',$n,$c,$t)", ("$id", id), ("$n", i["name"]), ("$c", text), ("$t", i["tags"])); }
+    void IndexRecord(string id) { var r = db.Rows("SELECT * FROM records WHERE id=$id", ("$id", id)).FirstOrDefault(); db.Execute("DELETE FROM search WHERE id=$id", ("$id", id)); if (r != null) db.Execute("INSERT INTO search VALUES($id,$t,$n,$c,$tags)", ("$id", id), ("$t", r["type"]), ("$n", r["title"]), ("$c", r["body"]), ("$tags", Cloud.S(JsonDocument.Parse((string)r["body"]!).RootElement, "tags") ?? "")); }
+    async Task Thumbnail(string id, CancellationToken stop) { var i = db.Rows("SELECT * FROM items WHERE id=$id AND deleted IS NULL", ("$id", id)).FirstOrDefault(); if (i == null || i["blob"] == null) return; if (!new[] { ".jpg", ".jpeg", ".png", ".gif", ".webp" }.Contains(Path.GetExtension((string)i["name"]!).ToLowerInvariant())) return; if (Convert.ToInt64(i["size"]) > 50 * 1024 * 1024) throw new ArgumentException("Image exceeds safe thumbnail decode limits"); var limit = long.TryParse(db.Setting("thumbnailLimit", "536870912"), out var maximum) ? maximum : 536870912; if (Directory.EnumerateFiles(Path.Combine(disk.Data, "thumbnails")).Sum(f => new FileInfo(f).Length) > limit) throw new IOException("Thumbnail cache limit reached. Originals remain available."); Storage.CheckPath(Path.Combine(disk.Data,"thumbnails"));var path = disk.Blob((string)i["blob"]!); using var input = File.OpenRead(path); using var codec = SKCodec.Create(input) ?? throw new ArgumentException("Unsupported image encoding"); if ((long)codec.Info.Width * codec.Info.Height > 40_000_000) throw new ArgumentException("Image exceeds safe thumbnail pixel limit"); using var img = SKBitmap.Decode(codec) ?? throw new ArgumentException("Image decoder could not read the original bytes"); var ratio = Math.Min(1, 360.0 / Math.Max(img.Width, img.Height)); using var output = new SKBitmap(Math.Max(1, (int)(img.Width * ratio)), Math.Max(1, (int)(img.Height * ratio))); using (var canvas = new SKCanvas(output)) { canvas.Clear(SKColors.White); canvas.DrawBitmap(img, new SKRect(0, 0, output.Width, output.Height), new SKSamplingOptions(SKFilterMode.Linear)); } using var encoded = SKImage.FromBitmap(output); using var data = encoded.Encode(SKEncodedImageFormat.Jpeg, 80); await using var file = File.Create(Path.Combine(disk.Data, "thumbnails", id + ".jpg")); data.SaveTo(file); await file.FlushAsync(stop); }
+}

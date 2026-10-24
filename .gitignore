@@ -1,0 +1,13 @@
+**/bin/
+**/obj/
+**/node_modules/
+src/web/dist/
+src/BeastCloud.Server/wwwroot/
+.local/
+releases/
+test-results/
+*.user
+**/TestResults/
+**/test-results/
+**/playwright-report/
+**/*.tsbuildinfo
