@@ -33,7 +33,7 @@ The runtime repair disables SQLite connection pooling for backup snapshots and v
 
 To retry after an early failure, run the new command above, preferably in PowerShell as Administrator. It preserves marked installations/accounts/data and keeps the usual refusal of unrelated nonempty directories. A fresh diagnostic is printed as `%TEMP%\BeastCloud-setup-<id>.log`; this works even when C:\BeastCloud does not exist or its protected logs are not readable. If another Windows-specific issue occurs, report the `FAILED during ...` line and nearby diagnostics. Never delete an existing installation to clear a download error.
 
-Five portable helper regressions and ten downloader regressions cover the certificate string, early diagnostic logging, secret redaction, log symlinks, download/cache integrity and verified installer overlays. Windows SCM/certificate creation itself still requires a Windows execution test.
+Five portable helper regressions and eleven downloader regressions cover the certificate string, early diagnostic logging, secret redaction, log symlinks, cache integrity and installer/runtime overlays, including rejection of a corrupt server DLL. The [Windows Server 2022 run](https://github.com/NoLifeeSSJ/BeastCloud/actions/runs/40108174485) passed fresh installation, recovery from the earlier empty DACLs and a normal reinstall using Windows PowerShell 5.1, the virtual service account and trusted HTTPS. The test also verifies the pre-update backup and a preserved data sentinel. Windows 11, interactive UAC, reboot and second-device acceptance remain separate checks.
 
 ## Offline installation with the repair
 
@@ -53,4 +53,4 @@ You can run the saved script with `-DownloadOnly` to verify/extract without inst
 
 GitHub is used to obtain the software, not to host your running cloud. After download, the local package can be copied to another owned Windows computer and installed offline using README's local installer command. No personal files, live databases, setup secrets, keys, accounts or backup contents are included in the repository. Source development caches are omitted too.
 
-This remains the same initial 0.1.0 application. The portable application tests passed, but native Windows installation/reboot/second-device acceptance and the feature gaps in FEATURES.md remain unverified/outstanding. Providing a GitHub installer does not change that status.
+This remains the initial 0.1.0 application with the 0.1.2 installer/runtime repair. The recorded Server 2022 checks cover installation and repair; the broader Windows 11/reboot/second-device acceptance and the feature gaps in FEATURES.md remain outstanding.

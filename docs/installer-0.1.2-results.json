@@ -1,0 +1,43 @@
+{
+  "repairRevision": "0.1.2",
+  "applicationVersion": "0.1.0",
+  "verifiedAtUtc": "2026-10-24T15:46:14.980017+00:00",
+  "sourceCommit": "399c8ff15b6d53d5c14d0a59491d207d35ebe084",
+  "originalArchiveSha256": "1dc45d87528fb857be95cb71f16288b495e150adee57f24c3a4184f9aa001f58",
+  "runtimeDll": {
+    "bytes": 183296,
+    "sha256": "fe713b3e179c428551a75b813db6d33854bb7ea1fc6cdb8c9be64393219b2c51"
+  },
+  "portableChecks": {
+    "installerHelpers": 5,
+    "githubDownloader": 11,
+    "coreAndCompanion": 19,
+    "httpIntegration": 20,
+    "status": "passed"
+  },
+  "nativeWindows": {
+    "platform": "Windows Server 2022",
+    "shell": "Windows PowerShell 5.1",
+    "runUrl": "https://github.com/NoLifeeSSJ/BeastCloud/actions/runs/40108174485",
+    "status": "passed",
+    "scenarios": [
+      "Fresh installation with trusted HTTPS and dedicated virtual service account",
+      "Recovery from protected empty file DACLs including service-owned files, with pre-update backup",
+      "Normal reinstall with pre-update backup and preserved data sentinel"
+    ]
+  },
+  "githubDownloadOnly": {
+    "status": "passed",
+    "verifiedOverlayFiles": 5,
+    "reusedOriginalArchive": true
+  },
+  "integrationNote": "An initial run timed out after 15 seconds in the deliberately invalid-schema subprocess, causing three subsequent fixture errors. An isolated rerun with crash dumps disabled passed all 20 tests.",
+  "notCovered": [
+    "Windows 11",
+    "Interactive UAC",
+    "Windows reboot",
+    "Owner creation through a Windows browser",
+    "Second device",
+    "Physical-drive failures"
+  ]
+}

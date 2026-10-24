@@ -45,3 +45,20 @@ Fresh-machine/reboot/second-device/private-LAN/physical-drive failure and Window
 ## Installer revision 0.1.1 regressions
 
 `PWSH=/path/to/pwsh python3 tests/installer_support.py` passes 5 portable helper tests; `PWSH=/path/to/pwsh python3 tests/github_installer.py` passes 10 downloader tests. These reproduce and fix the certificate-extension string/array bug, prove early failures create diagnostics before a root installation exists, verify known-secret redaction and symlink refusal, and verify checksum-protected installer metadata without executing patch code in DownloadOnly mode. These are SHA-256 integrity checks, not a digital signature. The application ZIP and its four parts are unchanged; no backend behavior was altered. Native Windows installer execution remains a separate check.
+
+## Installer/runtime repair revision 0.1.2
+
+The [native Windows Server 2022 run](https://github.com/NoLifeeSSJ/BeastCloud/actions/runs/40108174485) passed all three scenarios with Windows PowerShell 5.1: a fresh install, recovery after deliberately reproducing protected empty file DACLs, and a normal reinstall. It checks the `NT SERVICE\BeastCloud` identity, trusted HTTPS health, a preserved data sentinel and successful pre-update backups. It uses the original checksum-verified ZIP plus the repaired 183,296-byte server DLL. No database schema changed.
+
+The repair grants file access before removing inheritance, applies propagation flags only to directories, recovers already damaged service-owned files, configures the virtual service account through SCM and uses a direct IPv4 HTTPS readiness probe. SQLite snapshot/verification connections disable pooling so Windows releases the database before backup-directory rename and cleanup.
+
+The portable helper suite passes 5 checks, the downloader suite passes 11 checks including a corrupt runtime-DLL overlay, the C# core/companion suite passes 19 checks and the real HTTP suite passes 20 checks including backup/restore/encryption. The first HTTP run timed out in its deliberately invalid-schema subprocess and caused three subsequent fixture errors; an isolated rerun with crash dumps disabled passed all 20. See [the recorded results](installer-0.1.2-results.json). All PowerShell files parse, and an actual GitHub DownloadOnly invocation verifies and reuses the earlier application cache while fetching all five repair files. These results do not cover Windows 11, interactive UAC, reboot, owner-account creation in the Windows browser, a second device or physical-drive failure.
+
+To rebuild the small runtime overlay from source before refreshing its checksums:
+
+```sh
+dotnet publish src/BeastCloud.Server -c Release -r win-x64 --self-contained true -o .local/installer-runtime-0.1.2/win-x64
+python3 scripts/github-installer-patch.py
+```
+
+Keep the original archive/parts and older tags immutable. The bootstrap verifies all five overlay hashes; the corrected DLL is staged only in the new installed application directory.

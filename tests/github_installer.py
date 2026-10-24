@@ -69,6 +69,13 @@ if($LASTEXITCODE){exit $LASTEXITCODE}
    content=b'fixture';(self.fixture/name).write_bytes(content);patch.append(dict(name=name,bytes=len(content),sha256='0'*64))
   self.manifest['installerPatch']=dict(version='0.1.2',files=patch);self.write_manifest()
   result=self.run_script();self.assertNotEqual(result.returncode,0);self.assertFalse((self.cache_root()/'installer-0.1.2/Install.ps1').exists())
+ def test_corrupt_runtime_patch_is_rejected(self):
+  patch=[]
+  for name in ['Install.ps1','InstallerSupport.ps1','Get-BeastCloud.ps1','GITHUB-INSTALL.md','BeastCloud.Server.dll']:
+   content=b'verified fixture';(self.fixture/name).write_bytes(b'corrupt' if name.endswith('.dll') else content)
+   patch.append(dict(name=name,bytes=len(content),sha256=hashlib.sha256(content).hexdigest()))
+  self.manifest['installerPatch']=dict(version='0.1.2',files=patch);self.write_manifest()
+  result=self.run_script();self.assertNotEqual(result.returncode,0);self.assertFalse((self.cache_root()/'installer-0.1.2/BeastCloud.Server.dll').exists())
  def test_cache_symlink_refused(self):
   if os.name=='nt':self.skipTest('requires fixture symlink privilege')
   elsewhere=self.root/'elsewhere';elsewhere.mkdir();self.cache.symlink_to(elsewhere,target_is_directory=True);result=self.run_script();self.assertNotEqual(result.returncode,0);self.assertEqual(list(elsewhere.iterdir()),[])
