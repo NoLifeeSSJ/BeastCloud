@@ -3,6 +3,7 @@
 [CmdletBinding()]
 param([string]$OutputDirectory=(Join-Path $env:TEMP ('BeastCloud-Windows-test-'+[guid]::NewGuid().ToString('N'))))
 $ErrorActionPreference='Stop'
+[Net.ServicePointManager]::SecurityProtocol=[Net.SecurityProtocolType]::Tls12
 $repository=Split-Path $PSScriptRoot -Parent
 $work=Join-Path $OutputDirectory 'fixture'
 $root=Join-Path $work 'installation'
@@ -62,6 +63,12 @@ try {
  try{Invoke-RestMethod 'https://localhost:55443/api/health' -TimeoutSec 3|Out-Null}catch{Write-Host "::error title=Native HTTPS diagnostic::$($_.Exception.Message)"}
  $failedService=Get-Service BeastCloud -ErrorAction SilentlyContinue
  if($failedService){Write-Host "::error title=Native service diagnostic::Status: $($failedService.Status)"}
+ try{
+  foreach($event in Get-WinEvent -FilterHashtable @{LogName='Application';StartTime=(Get-Date).AddMinutes(-10);Level=@(2,3)} -MaxEvents 20 -ErrorAction SilentlyContinue|Where-Object {$_.Message -match 'BeastCloud'}){
+   $message=$event.Message.Substring(0,[Math]::Min(1800,$event.Message.Length)).Replace('%','%25').Replace("`r",'%0D').Replace("`n",'%0A')
+   Write-Host "::error title=Native application event::$message"
+  }
+ }catch{}
  if(Test-Path -LiteralPath (Join-Path $root 'logs')){
   foreach($runtimeLog in Get-ChildItem -LiteralPath (Join-Path $root 'logs') -File|Where-Object {$_.Name -notlike 'install-*'}){
    foreach($line in Get-Content -LiteralPath $runtimeLog.FullName -Tail 8){Write-Host ('::error title=Native runtime diagnostic::'+$line.Replace('%','%25').Replace("`r",'%0D').Replace("`n",'%0A'))}

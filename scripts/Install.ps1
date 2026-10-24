@@ -3,6 +3,9 @@
 param([string]$Root='C:\BeastCloud',[int]$Port=5443,[string]$Storage='', [switch]$Lan,[string]$LanAddress='',[switch]$Elevated,[string]$PackagePath='',[string]$SetupLogPath='')
 $ErrorActionPreference='Stop'
 $ProgressPreference='SilentlyContinue'
+# Windows PowerShell 5.1's TLS setting is process-local; elevation starts a new
+# process and does not inherit the bootstrap's TLS 1.2 selection.
+[Net.ServicePointManager]::SecurityProtocol=[Net.SecurityProtocolType]::Tls12
 $stage='Initializing installer'
 $log=$null
 $previous=$null
