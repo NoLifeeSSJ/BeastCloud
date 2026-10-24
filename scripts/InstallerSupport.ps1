@@ -27,7 +27,6 @@ function Grant-BeastTreeAccess {
  # with /inheritance:r /T left existing files with an empty DACL on Windows.
  # First grant effective rights to every object, then add propagation on directories.
  $arguments=@($Path)
- if($Protect){$arguments+='/inheritance:r'}
  $arguments+='/grant:r'
  foreach($identity in $Identities){$arguments+=($identity+':'+$Rights)}
  $arguments+=@('/T','/C','/L')
@@ -35,6 +34,33 @@ function Grant-BeastTreeAccess {
  $exitCode=$LASTEXITCODE
  if($LogPath){$result|Out-File -LiteralPath $LogPath -Encoding UTF8 -Append}
  if($exitCode -ne 0){throw "Unable to grant $Rights access to $Path (icacls exit $exitCode)."}
+ if($Protect){
+  # Install explicit file grants BEFORE removing inheritance. Service-created
+  # files otherwise lose the administrator's WRITE_DAC during the same command.
+  # Already broken files owned by the virtual account need targeted ownership
+  # recovery; icacls can silently skip their empty DACLs during tree traversal.
+  foreach($file in Get-ChildItem -LiteralPath $Path -File -Recurse -Force){
+   if($file.Attributes -band [IO.FileAttributes]::ReparsePoint){throw "Reparse point refused: $($file.FullName)"}
+   $acl=Get-Acl -LiteralPath $file.FullName
+   if($acl.AreAccessRulesProtected -and @($acl.GetAccessRules($true,$true,[Security.Principal.SecurityIdentifier])).Count -eq 0){
+    $result=& takeown.exe /F $file.FullName /A
+    $exitCode=$LASTEXITCODE
+    if($LogPath){$result|Out-File -LiteralPath $LogPath -Encoding UTF8 -Append}
+    if($exitCode -ne 0){throw "Unable to recover administrative ownership of $($file.FullName)."}
+    $repair=@($file.FullName,'/grant:r')
+    foreach($identity in $Identities){$repair+=($identity+':'+$Rights)}
+    $repair+='/L'
+    $result=& icacls.exe @repair
+    $exitCode=$LASTEXITCODE
+    if($LogPath){$result|Out-File -LiteralPath $LogPath -Encoding UTF8 -Append}
+    if($exitCode -ne 0){throw "Unable to recover file permissions for $($file.FullName)."}
+   }
+  }
+  $result=& icacls.exe $Path /inheritance:r /T /C /L
+  $exitCode=$LASTEXITCODE
+  if($LogPath){$result|Out-File -LiteralPath $LogPath -Encoding UTF8 -Append}
+  if($exitCode -ne 0){throw "Unable to protect inherited permissions for $Path."}
+ }
  $directories=@((Get-Item -LiteralPath $Path -Force))+@(Get-ChildItem -LiteralPath $Path -Directory -Recurse -Force)
  foreach($directory in $directories){
   if($directory.Attributes -band [IO.FileAttributes]::ReparsePoint){throw "Reparse point refused: $($directory.FullName)"}
